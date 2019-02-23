@@ -1,5 +1,5 @@
 #! /bin/sh
-git pull origin parallel_decoding
+git pull origin 190220_parallel
 cd ../build
 make
 make test
