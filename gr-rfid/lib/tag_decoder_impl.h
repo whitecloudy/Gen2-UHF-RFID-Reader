@@ -43,10 +43,31 @@ namespace gr {
         FILE *preamble_fp;
         int success_count;
 
-        int tag_sync(float* in, int size);
-        int determine_first_mask_level(float* in, int index);
-        int decode_single_bit(float* in, int index, int mask_level, float* ret_corr);
-        std::vector<float> tag_detection(float* in, int index, int n_expected_bit);
+        typedef struct _OFG_node
+        {
+          int id;
+          int layer;
+          int* state;
+          std::vector<int> link;
+        } OFG_node;
+
+        int tag_sync(std::vector<float> in, int size);
+        int determine_first_mask_level(std::vector<float> in, int index);
+        int decode_single_bit(std::vector<float> in, int index, int mask_level, float* ret_corr);
+        std::vector<float> tag_detection(std::vector<float> in, int index, int n_expected_bit);
+
+        std::vector<int> cut_noise_sample(std::vector<float> in, const int size, const int data_len);
+        double IQ_distance(const gr_complex p1, const gr_complex p2);
+        std::vector<int> clustering_algorithm(const std::vector<gr_complex> in, const int size);
+        std::vector<int> assign_sample_to_cluster(const std::vector<gr_complex> in, const int size, const std::vector<int> center);
+
+        int filter_aligned_flip(const std::vector<int> clustered_idx);
+        void count_flip(int** flip_info, const std::vector<int> clustered_idx, int size);
+        int check_odd_cycle_OFG(OFG_node* OFG, int start, int compare, int check, std::vector<int> stack);
+        void construct_OFG(OFG_node* OFG, int** flip_info, int size, int n_tag);
+        void determine_OFG_state(OFG_node* OFG, int size, int n_tag);
+        void extract_parallel_sample(std::vector<int>* extracted_sample, const std::vector<int> clustered_idx, const OFG_node* OFG, int n_tag);
+
         int check_crc(char * bits, int num_bits);
 
       public:

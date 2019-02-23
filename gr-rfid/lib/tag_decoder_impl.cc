@@ -75,7 +75,7 @@ namespace gr
       ninput_items_required[0] = noutput_items;
     }
 
-    int tag_decoder_impl::tag_sync(float* norm_in, int size)
+    int tag_decoder_impl::tag_sync(std::vector<float> norm_in, int size)
     // This method searches the preamble and returns the start index of the tag data.
     // If the correlation value exceeds the threshold, it returns the start index of the tag data.
     // Else, it returns -1.
@@ -144,7 +144,7 @@ namespace gr
       else return -1;
     }
 
-    int tag_decoder_impl::determine_first_mask_level(float* norm_in, int index)
+    int tag_decoder_impl::determine_first_mask_level(std::vector<float> norm_in, int index)
     // This method searches whether the first bit starts with low level or high level.
     // If the first bit starts with low level, it returns -1.
     // If the first bit starts with high level, it returns 0.
@@ -169,7 +169,7 @@ namespace gr
       return max_max_index;
     }
 
-    int tag_decoder_impl::decode_single_bit(float* norm_in, int index, int mask_level, float* ret_corr)
+    int tag_decoder_impl::decode_single_bit(std::vector<float> norm_in, int index, int mask_level, float* ret_corr)
     // This method decodes single bit and returns the decoded value and the correlation score.
     // index: start point of "data bit", do not decrease half bit!
     // mask_level: start level of "decoding bit". (-1)low level start, (1)high level start.
@@ -215,7 +215,7 @@ namespace gr
       return max_index;
     }
 
-    std::vector<float> tag_decoder_impl::tag_detection(float* norm_in, int index, int n_expected_bit)
+    std::vector<float> tag_decoder_impl::tag_detection(std::vector<float> norm_in, int index, int n_expected_bit)
     // This method decodes n_expected_bit of data by using previous methods, and returns the vector of the decoded data.
     // index: start point of "data bit", do not decrease half bit!
     {
@@ -268,6 +268,424 @@ namespace gr
       return decoded_bits;
     }
 
+    std::vector<int> tag_decoder_impl::cut_noise_sample(std::vector<float> in, const int size, const int data_len)
+    {
+      std::vector<int> output;
+
+      int idx = 1;
+      const float threshold = 0.002;
+      float average = in[0];
+
+      for(; idx<size ; idx++)
+      {
+        average += in[idx];
+        average /= 2;
+        if(std::abs(in[idx] - average) > threshold) break;
+      }
+
+      output.push_back(idx);  // start idx of the data sample
+
+      idx += data_len*n_samples_TAG_BIT;
+      average = in[idx];
+      int count = 0;
+
+      for(int i=1 ; idx+i<size ; i++)
+      {
+        average += in[idx+i];
+        average /= 2;
+
+        if(std::abs(in[idx+i] - average) > threshold)
+        {
+          count = 0;
+          idx += i;
+          i = 0;
+          average = in[idx];
+        }
+        else count++;
+        if(count >= 1.5 * n_samples_TAG_BIT) break;
+      }
+
+      output.push_back(idx-output[0]+1);  // size of the data sample
+      return output;
+    }
+
+    // clustering algotirhm
+    double tag_decoder_impl::IQ_distance(const gr_complex p1, const gr_complex p2)
+    {
+      return std::sqrt(std::pow((p1.real() - p2.real()), 2) + std::pow((p1.imag() - p2.imag()), 2));
+    }
+
+    std::vector<int> tag_decoder_impl::clustering_algorithm(const std::vector<gr_complex> in, const int size)
+    {
+      std::vector<int> center_idx;
+
+      std::vector<int> local_density;
+      std::vector<double> local_distance;
+      std::vector<int> min_distance_id;
+
+      const double cutoff_distance = 0.001;
+      double max_local_density = 0;
+
+      for(int i=0 ; i<size ; i++)
+      {
+        int current_local_density = -1;
+
+        for(int j=0 ; j<size ; j++)
+        {
+          if(IQ_distance(in[i], in[j]) < cutoff_distance) current_local_density++;
+        }
+
+        if(current_local_density > max_local_density) max_local_density = current_local_density;
+        local_density.push_back(current_local_density);
+      }
+      for(int i=0 ; i<size ; i++)
+      {
+        double min_distance = 1;
+
+        for(int j=0 ; j<size ; j++)
+        {
+          if(local_density[i] >= local_density[j]) continue;
+
+          double distance = IQ_distance(in[i], in[j]);
+          if(distance < min_distance) min_distance = distance;
+        }
+
+        local_distance.push_back(min_distance);
+      }
+
+      max_local_density /= 10;
+      int count = 0;
+
+      for(int i=0 ; i<size ; i++)
+      {
+        if(local_density[i] > max_local_density && local_distance[i] > cutoff_distance)
+        {
+          center_idx.push_back(i);
+          count++;
+        }
+      }
+
+      for(int i=0 ; i<center_idx.size() ; i++)
+      {
+        for(int j=i ; j<center_idx.size() ; j++)
+        {
+          if(i == j) continue;
+
+          if(IQ_distance(in[center_idx[i]], in[center_idx[j]]) < cutoff_distance)
+          {
+            center_idx.erase(center_idx.begin() + j);
+            j--;
+          }
+        }
+      }
+
+      if(count == 0) center_idx.push_back(-1);
+
+      return center_idx;
+    }
+
+    std::vector<int> tag_decoder_impl::assign_sample_to_cluster(const std::vector<gr_complex> in, const int size, const std::vector<int> center)
+    {
+      std::vector<int> clustered_idx;
+
+      for(int i=0 ; i<size ; i++)
+      {
+        double min_distance = 1.7e308;
+        int min_idx = -1;
+
+        for(int j=0 ; j<center.size() ; j++)
+        {
+          double distance = IQ_distance(in[i], in[center[j]]);
+
+          if(distance < min_distance)
+          {
+            min_distance = distance;
+            min_idx = j;
+          }
+        }
+
+        clustered_idx.push_back(min_idx);
+      }
+
+      return clustered_idx;
+    }
+
+    int tag_decoder_impl::filter_aligned_flip(const std::vector<int> clustered_idx)
+    {
+      const int window_size = 100;
+      int count = 0;
+
+      std::ofstream flip("flip", std::ios::app);
+
+      for(int i=1 ; i<window_size ; i++)
+      {
+        if(clustered_idx[i] != clustered_idx[i-1])
+          count++;
+      }
+
+      for(int i=window_size+1 ; i<clustered_idx.size() ; i++)
+      {
+        if(clustered_idx[i] != clustered_idx[i-1])
+          count++;
+        if(clustered_idx[i-window_size] != clustered_idx[i-window_size-1])
+          count--;
+
+        flip << count << " ";
+      }
+
+      flip.close();
+    }
+
+    void tag_decoder_impl::count_flip(int** flip_info, const std::vector<int> clustered_idx, int size)
+    {
+      for(int i=0 ; i<size ; i++)
+      {
+        for(int j=0 ; j<size ; j++)
+          flip_info[i][j] = 0;
+      }
+
+      for(int i=0 ; i<clustered_idx.size()-1 ; i++)
+      {
+        if(clustered_idx[i] == clustered_idx[i+1]) continue;
+        flip_info[clustered_idx[i]][clustered_idx[i+1]]++;
+      }
+
+      std::ofstream flip("flip", std::ios::app);
+
+      flip<<std::endl<<std::endl;
+      for(int i=0 ; i<size ; i++)
+      {
+        for(int j=0 ; j<size ; j++)
+          flip << flip_info[i][j] << " ";
+        flip << std::endl;
+      }
+      flip << std::endl;
+
+      flip.close();
+    }
+
+    int tag_decoder_impl::check_odd_cycle_OFG(OFG_node* OFG, int start, int compare, int check, std::vector<int> stack)
+    {
+      if(start == compare)
+      {
+        if(check == 1) return 1;
+        else return -1;
+      }
+
+      for(int i=0 ; i<stack.size() ; i++)
+      {
+        if(stack[i] == compare) return 0;
+      }
+
+      check *= -1;
+      stack.push_back(compare);
+
+      for(int i=0 ; i<OFG[compare].link.size() ; i++)
+      {
+        if(check_odd_cycle_OFG(OFG, start, OFG[compare].link[i], check, stack) == -1) return -1;
+      }
+
+      return 0;
+    }
+
+    void tag_decoder_impl::construct_OFG(OFG_node* OFG, int** flip_info, int size, int n_tag)
+    {
+      std::ofstream flipf("flip", std::ios::app);
+
+      int** flip = new int*[size];
+      for(int i=0 ; i<size ; i++)
+      {
+        flip[i] = new int[size];
+
+        for(int j=0 ; j<size ; j++)
+          flip[i][j] = flip_info[i][j] + flip_info[j][i];
+      }
+
+      for(int i=0 ; i<size ; i++)
+      {
+        for(int j=0 ; j<size ; j++)
+          flipf << flip[i][j] << " ";
+        flipf << std::endl;
+      }
+      flipf << std::endl;
+
+      float* conf = new float[size];
+
+      int** link_id = new int*[size];
+      for(int i=0 ; i<size ; i++)
+      {
+        link_id[i] = new int[size];
+
+        for(int j=0 ; j<size ; j++)
+        {
+          link_id[i][j] = j;
+        }
+
+        for(int j=0 ; j<size-1 ; j++)
+        {
+          for(int k=j+1 ; k<size ; k++)
+          {
+            if(flip[i][j] < flip[i][k])
+            {
+              int temp = flip[i][j];
+              flip[i][j] = flip[i][k];
+              flip[i][k] = temp;
+
+              temp = link_id[i][j];
+              link_id[i][j] = link_id[i][k];
+              link_id[i][k] = temp;
+            }
+          }
+        }
+
+        if(flip[i][n_tag] == 0) conf[i] = 1;
+        else conf[i] = flip[i][n_tag-1] / flip[i][n_tag];
+      }
+
+      for(int i=0 ; i<size ; i++)
+      {
+        for(int j=0 ; j<size ; j++)
+          flipf << flip[i][j] << " ";
+        flipf << std::endl;
+      }
+      flipf << std::endl;
+
+      for(int i=0 ; i<size ; i++)
+      {
+        for(int j=0 ; j<size ; j++)
+          flipf << link_id[i][j] << " ";
+        flipf << std::endl;
+      }
+      flipf << std::endl;
+
+      int* conf_id = new int[size];
+      for(int i=0 ; i<size ; i++)
+        conf_id[i] = i;
+
+      for(int i=0 ; i<size-1 ; i++)
+      {
+        for(int j=i+1 ; j<size ; j++)
+        {
+          if(conf[i] < conf[j])
+          {
+            float temp = conf[i];
+            conf[i] = conf[j];
+            conf[j] = temp;
+
+            int temp_id = conf_id[i];
+            conf_id[i] = conf_id[j];
+            conf_id[j] = temp_id;
+          }
+        }
+      }
+
+      for(int i=0 ; i<size ; i++)
+      {
+        for(int j=0 ; OFG[conf_id[i]].link.size()<n_tag ; j++)
+        {
+          int candidate_id = link_id[conf_id[i]][j];
+          int k;
+
+          for(k=0 ; k<OFG[conf_id[i]].link.size() ; k++)
+          {
+            if(candidate_id == OFG[conf_id[i]].link[k]) break;
+          }
+
+          if(k == OFG[conf_id[i]].link.size())
+          {
+            OFG[conf_id[i]].link.push_back(candidate_id);
+            for(int x=0 ; x<OFG[conf_id[i]].link.size() ; x++)
+            {
+              std::vector<int> stack;
+              if(check_odd_cycle_OFG(OFG, conf_id[i], OFG[conf_id[i]].link[x], -1, stack) == -1)
+                OFG[conf_id[i]].link.pop_back();
+            }
+          }
+        }
+      }
+
+      flipf<<std::endl<<std::endl;
+      for(int i=0 ; i<size ; i++)
+      {
+        for(int j=0 ; j<n_tag ; j++)
+          flipf << OFG[i].link[j] << " ";
+        flipf << std::endl;
+      }
+
+      flipf.close();
+
+      for(int i=0 ; i<size ; i++)
+      {
+        delete flip[i];
+        delete link_id[i];
+      }
+
+      delete flip;
+      delete conf;
+      delete link_id;
+    }
+
+    void tag_decoder_impl::determine_OFG_state(OFG_node* OFG, int size, int n_tag)
+    {
+      OFG[0].layer = 0;
+
+      for(int i=0 ; i<n_tag ; i++)
+      {
+        OFG[OFG[0].link[i]].layer = 1;
+        OFG[OFG[0].link[i]].state[i] = 1;
+      }
+
+      for(int i=2 ; i<=n_tag ; i++)
+      {
+        for(int j=0 ; j<size ; j++)
+        {
+          if(OFG[j].layer == i-1)
+          {
+            for(int k=0 ; k<n_tag ; k++)
+            {
+              OFG[OFG[j].link[k]].layer = i;
+
+              for(int x=0 ; x<n_tag ; x++)
+              {
+                if(OFG[j].state[x] == 1)
+                  OFG[OFG[j].link[k]].state[x] = 1;
+              }
+            }
+          }
+        }
+      }
+
+      std::ofstream flipf("flip", std::ios::app);
+      for(int i=0 ; i<size ; i++)
+      {
+        flipf << "i=" << i;
+        for(int j=0 ; j<n_tag ; j++)
+          flipf << " " << OFG[i].state[j];
+        flipf << std::endl;
+      }
+      flipf<<std::endl<<std::endl;
+      flipf.close();
+    }
+
+    void tag_decoder_impl::extract_parallel_sample(std::vector<int>* extracted_sample, const std::vector<int> clustered_idx, const OFG_node* OFG, int n_tag)
+    {
+      for(int i=0 ; i<clustered_idx.size() ; i++)
+      {
+        for(int j=0 ; j<n_tag ; j++)
+          extracted_sample[j].push_back(OFG[clustered_idx[i]].state[j]);
+      }
+
+      std::ofstream flipf("flip", std::ios::app);
+      for(int i=0 ; i<n_tag ; i++)
+      {
+        flipf << "\t*** tag " << i << " ***" << std::endl;
+        for(int j=0 ; j<clustered_idx.size() ; j++)
+          flipf << extracted_sample[i][j] << " ";
+        flipf << std::endl << std::endl;
+      }
+      flipf.close();
+    }
+
     int
     tag_decoder_impl::general_work (int noutput_items,
       gr_vector_int &ninput_items,
@@ -275,7 +693,7 @@ namespace gr
       gr_vector_void_star &output_items)
     {
       const gr_complex *in = (const  gr_complex *) input_items[0];
-      float *norm_in = new float[ninput_items[0]];
+      std::vector<float> norm_in;
       float *out = (float *) output_items[0];
       int consumed = 0;
 
@@ -286,19 +704,67 @@ namespace gr
 
       // convert from complex value to float value
       for(int i=0 ; i<ninput_items[0] ; i++)
-        norm_in[i] = std::sqrt(std::norm(in[i]));
+        norm_in.push_back(std::sqrt(std::norm(in[i])));
 
       // Processing only after n_samples_to_ungate are available and we need to decode an RN16
       if(reader_state->decoder_status == DECODER_DECODE_RN16 && ninput_items[0] >= reader_state->n_samples_to_ungate)
       {
+        std::vector<int> data_idx = cut_noise_sample(norm_in, ninput_items[0], TAG_PREAMBLE_BITS+RN16_BITS-1);
+
+        std::vector<gr_complex> cut_in;
+        std::vector<float> cut_norm_in;
+        for(int i=data_idx[0] ; i<data_idx[0]+data_idx[1] ; i++)
+        {
+          cut_in.push_back(in[i]);
+          cut_norm_in.push_back(norm_in[i]);
+        }
+
+        std::vector<int> center = clustering_algorithm(cut_in, data_idx[1]);
+        std::vector<int> clustered_idx = assign_sample_to_cluster(cut_in, data_idx[1], center);
+        int filter_idx = filter_aligned_flip(clustered_idx);
+
+        int** flip_info = new int*[center.size()];
+        for(int i=0 ; i<center.size() ; i++)
+          flip_info[i] = new int[center.size()];
+        count_flip(flip_info, clustered_idx, center.size());
+
+        int n_tag = -1;
+        {
+          int size = center.size();
+          while(size)
+          {
+            size /= 2;
+            n_tag++;
+          }
+        }
+
+        OFG_node* OFG = new OFG_node[center.size()];
+        construct_OFG(OFG, flip_info, center.size(), n_tag);
+        for(int i=0 ; i<center.size() ; i++)
+        {
+          OFG[i].state = new int[n_tag];
+
+          for(int j=0 ; j<n_tag ; j++)
+            OFG[i].state[j] = -1;
+        }
+        determine_OFG_state(OFG, center.size(), n_tag);
+
+        std::vector<int>* extracted_sample = new std::vector<int>[n_tag];
+        extract_parallel_sample(extracted_sample, clustered_idx, OFG, n_tag);
+
         #ifdef DEBUG_MESSAGE
         {
           debug.open((debug_message+std::to_string(reader_state->reader_stats.cur_inventory_round)+"_"+std::to_string(reader_state->reader_stats.cur_slot_number)).c_str(), std::ios::app);
           debug << "n_samples_to_ungate= " << reader_state->n_samples_to_ungate << ", ninput_items[0]= " << ninput_items[0] << std::endl;
           debug << "\t\t\t\t\t** samples from gate **" << std::endl;
-          for(int i=0 ; i<ninput_items[0] ; i++)
+          for(int i=0 ; i<norm_in.size() ; i++)
             debug << norm_in[i] << " ";
           debug << std::endl << "\t\t\t\t\t** samples from gate **" << std::endl << std::endl << std::endl << std::endl;
+
+          debug << "\t\t\t\t\t** (cut) samples from gate **" << std::endl;
+          for(int i=0 ; i<cut_norm_in.size() ; i++)
+            debug << cut_norm_in[i] << " ";
+          debug << std::endl << "\t\t\t\t\t** (cut) samples from gate **" << std::endl << std::endl << std::endl << std::endl;
           debug.close();
 
           debug.open((debug_message+std::to_string(reader_state->reader_stats.cur_inventory_round)+"_"+std::to_string(reader_state->reader_stats.cur_slot_number)+"_iq").c_str(), std::ios::app);
@@ -310,6 +776,15 @@ namespace gr
           debug << "\t\t\t\t\t** samples from gate (Q) **" << std::endl;
           for(int i=0 ; i<ninput_items[0] ; i++)
             debug << in[i].imag() << " ";
+          debug << std::endl << "\t\t\t\t\t** samples from gate **" << std::endl << std::endl << std::endl << std::endl;
+
+          debug << "\t\t\t\t\t** (cut) samples from gate (I) **" << std::endl;
+          for(int i=0 ; i<cut_in.size() ; i++)
+            debug << cut_in[i].real() << " ";
+          debug << std::endl << "\t\t\t\t\t** samples from gate **" << std::endl << std::endl << std::endl << std::endl;
+          debug << "\t\t\t\t\t** samples from gate (Q) **" << std::endl;
+          for(int i=0 ; i<cut_in.size() ; i++)
+            debug << cut_in[i].imag() << " ";
           debug << std::endl << "\t\t\t\t\t** samples from gate **" << std::endl << std::endl << std::endl << std::endl;
           debug.close();
         }
@@ -384,7 +859,14 @@ namespace gr
             reader_state->reader_stats.cur_slot_number = 1;
 
             log << "└──────────────────────────────────────────────────" << std::endl;
-            reader_state->gen2_logic_status = SEND_QUERY;
+            if(reader_state->reader_stats.cur_inventory_round > MAX_NUM_QUERIES)
+            {
+              reader_state->reader_stats.cur_inventory_round--;
+              reader_state-> status = TERMINATED;
+              reader_state->decoder_status = DECODER_TERMINATED;
+            }
+            else
+              reader_state->gen2_logic_status = SEND_QUERY;
           }
           else
           {
@@ -522,7 +1004,14 @@ namespace gr
           reader_state->reader_stats.cur_slot_number = 1;
 
           log << "└──────────────────────────────────────────────────" << std::endl;
-          reader_state->gen2_logic_status = SEND_QUERY;
+          if(reader_state->reader_stats.cur_inventory_round > MAX_NUM_QUERIES)
+          {
+            reader_state->reader_stats.cur_inventory_round--;
+            reader_state-> status = TERMINATED;
+            reader_state->decoder_status = DECODER_TERMINATED;
+          }
+          else
+            reader_state->gen2_logic_status = SEND_QUERY;
         }
         else
         {
@@ -534,7 +1023,7 @@ namespace gr
         // process for GNU RADIO
         consumed = reader_state->n_samples_to_ungate;
       }
-      delete[] norm_in;
+
       consume_each(consumed);
       return WORK_CALLED_PRODUCE;
     }
