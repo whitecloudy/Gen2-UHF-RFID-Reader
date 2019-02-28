@@ -874,12 +874,12 @@ namespace gr
           for(int i=0 ; i<center.size() ; i++)
             delete flip_info[i];
           delete flip_info;
-
           for(int i=0 ; i<center.size() ; i++)
             delete OFG[i].state;
-          delete OFG;
+          delete[] OFG;
 
-          delete extracted_sample;
+
+          delete[] extracted_sample;
         }
         else
         {
