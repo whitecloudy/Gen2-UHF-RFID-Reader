@@ -325,7 +325,9 @@ namespace gr
 
       const double cutoff_distance = 0.001;
       double max_local_density = 0;
-
+      double max_local_distance = 0;
+      double min_local_distance = 1;
+  std::ofstream cluster("cluster", std::ios::app);
       for(int i=0 ; i<size ; i++)
       {
         int current_local_density = -1;
@@ -350,7 +352,30 @@ namespace gr
           if(distance < min_distance) min_distance = distance;
         }
 
+        if(min_distance != 1)
+        {
+          if(min_distance > max_local_distance) max_local_distance = min_distance;
+          if(min_distance < min_local_distance) min_local_distance = min_distance;
+        }
         local_distance.push_back(min_distance);
+      }
+
+      for(int i=0 ; i<size ; i++)
+      {
+        if(local_distance[i] == 1) continue;
+        local_distance[i] = 0.8 * ((local_distance[i] - min_local_distance) / (max_local_distance - min_local_distance));
+      }
+
+      // debug
+      {
+        cluster << " ** local density **" << std::endl;
+        for(int i=0 ; i<size ; i++)
+          cluster << local_density[i] << " ";
+        cluster << std::endl << "** local distance **" << std::endl;
+        for(int i=0 ; i<size; i++)
+          cluster << local_distance[i] << " ";
+        cluster << std::endl;
+        cluster.close();
       }
 
       max_local_density /= 10;
@@ -358,7 +383,7 @@ namespace gr
 
       for(int i=0 ; i<size ; i++)
       {
-        if(local_density[i] > max_local_density && local_distance[i] > cutoff_distance)
+        if(local_density[i] > max_local_density && local_distance[i] > 0.1)
         {
           center_idx.push_back(i);
           count++;
@@ -750,12 +775,12 @@ namespace gr
       // convert from complex value to float value
       for(int i=0 ; i<ninput_items[0] ; i++)
         norm_in.push_back(std::sqrt(std::norm(in[i])));
-
+log.open("chk", std::ios::app);
       // Processing only after n_samples_to_ungate are available and we need to decode an RN16
       if(reader_state->decoder_status == DECODER_DECODE_RN16 && ninput_items[0] >= reader_state->n_samples_to_ungate)
-      {
+      {log << "dddd";
         std::vector<int> data_idx = cut_noise_sample(norm_in, ninput_items[0], TAG_PREAMBLE_BITS+RN16_BITS-1);
-
+log << "cccc";
         std::vector<gr_complex> cut_in;
         std::vector<float> cut_norm_in;
         for(int i=data_idx[0] ; i<data_idx[0]+data_idx[1] ; i++)
@@ -763,8 +788,8 @@ namespace gr
           cut_in.push_back(in[i]);
           cut_norm_in.push_back(norm_in[i]);
         }
-
-        std::vector<int> center = clustering_algorithm(cut_in, data_idx[1]);
+log<<"bbbb";
+        std::vector<int> center = clustering_algorithm(cut_in, data_idx[1]);log<<"aaaa";
         int n_tag = -1;
         {
           int size = center.size();
@@ -800,7 +825,7 @@ namespace gr
 
           std::vector<int>* extracted_sample = new std::vector<int>[n_tag];
           extract_parallel_sample(extracted_sample, clustered_idx, OFG, n_tag);
-
+log << "AAAA";
           int i;
           for(i=0 ; i<n_tag ; i++)
           {
@@ -874,10 +899,10 @@ namespace gr
           for(int i=0 ; i<center.size() ; i++)
             delete flip_info[i];
           delete flip_info;
+
           for(int i=0 ; i<center.size() ; i++)
             delete OFG[i].state;
           delete[] OFG;
-
 
           delete[] extracted_sample;
         }
