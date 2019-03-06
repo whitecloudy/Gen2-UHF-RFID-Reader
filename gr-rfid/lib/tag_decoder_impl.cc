@@ -439,8 +439,8 @@ namespace gr
         {
           if(i == j) continue;
 
-          //if(in[center_idx[i]].real() == in[center_idx[j]].real() && in[center_idx[i]].imag() == in[center_idx[j]].imag())
-          if(IQ_distance(in[center_idx[i]], in[center_idx[j]]) < CUTOFF_DISTANCE)
+          if(in[center_idx[i]].real() == in[center_idx[j]].real() && in[center_idx[i]].imag() == in[center_idx[j]].imag())
+          //if(IQ_distance(in[center_idx[i]], in[center_idx[j]]) < CUTOFF_DISTANCE)
           {
             center_idx.erase(center_idx.begin() + j);
             j--;
