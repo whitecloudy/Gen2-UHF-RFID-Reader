@@ -321,24 +321,45 @@ namespace gr
 
       std::vector<int> local_density;
       std::vector<double> local_distance;
-      std::vector<int> min_distance_id;
+      std::vector<double> continuity;
+      std::vector<double> decision;
 
       const double cutoff_distance = 0.001;
-      double max_local_density = 0;
+      const int half_time_window = n_samples_TAG_BIT / 2;
+
       double max_local_distance = 0;
       double min_local_distance = 1;
-  std::ofstream cluster("cluster", std::ios::app);
+      double max_decision = 0;
+        std::ofstream iq("iq", std::ios::app);
+        for(int i=0 ; i<size ; i++)
+          iq << in[i].real() << " ";
+        iq << std::endl;
+        for(int j=0 ; j<size ; j++)
+          iq << in[j].imag() << " ";
+        iq.close();
+
       for(int i=0 ; i<size ; i++)
       {
         int current_local_density = -1;
+        double current_continuity = -1;
+        int count = 0;
 
         for(int j=0 ; j<size ; j++)
         {
-          if(IQ_distance(in[i], in[j]) < cutoff_distance) current_local_density++;
+          if(IQ_distance(in[i], in[j]) < cutoff_distance)
+          {
+            current_local_density++;
+            if(j >= i - half_time_window && j <= i + half_time_window)
+            {
+              current_continuity = current_continuity + 1;
+              count++;
+            }
+          }
         }
 
-        if(current_local_density > max_local_density) max_local_density = current_local_density;
         local_density.push_back(current_local_density);
+        current_continuity /= count;
+        continuity.push_back(current_continuity);
       }
       for(int i=0 ; i<size ; i++)
       {
@@ -366,29 +387,51 @@ namespace gr
         local_distance[i] = 0.8 * ((local_distance[i] - min_local_distance) / (max_local_distance - min_local_distance));
       }
 
-      // debug
+      for(int i=0 ; i<size ; i++)
       {
+        double current_decision = local_density[i] * local_distance[i] * continuity[i];
+        if(current_decision > max_decision) max_decision = current_decision;
+        decision.push_back(current_decision);
+      }
+
+      // debug
+
+        std::ofstream cluster("cluster", std::ios::app);
         cluster << " ** local density **" << std::endl;
         for(int i=0 ; i<size ; i++)
           cluster << local_density[i] << " ";
         cluster << std::endl << "** local distance **" << std::endl;
         for(int i=0 ; i<size; i++)
           cluster << local_distance[i] << " ";
+        cluster << std::endl << "** continuity **" << std::endl;
+        for(int i=0 ; i<size; i++)
+          cluster << continuity[i] << " ";
+        cluster << std::endl << "** decision **" << std::endl;
+        for(int i=0 ; i<size; i++)
+          cluster << decision[i] << " ";
         cluster << std::endl;
-        cluster.close();
-      }
 
-      max_local_density /= 10;
       int count = 0;
 
       for(int i=0 ; i<size ; i++)
       {
-        if(local_density[i] > max_local_density && local_distance[i] > 0.1)
+        if(decision[i] > max_decision * 0.1)
         {
           center_idx.push_back(i);
           count++;
         }
       }
+
+      cluster << " **center idx**" << std::endl;
+      for(int i=0 ; i<center_idx.size() ; i++)
+        cluster << center_idx[i] << " ";
+      cluster << std::endl << "** center I " << std::endl;
+      for(int i=0 ; i<center_idx.size() ; i++)
+        cluster << in[center_idx[i]].real() << " ";
+      cluster << std::endl << "** center Q " << std::endl;
+      for(int i=0 ; i<center_idx.size() ; i++)
+        cluster << in[center_idx[i]].imag() << " ";
+      cluster << std::endl;
 
       for(int i=0 ; i<center_idx.size() ; i++)
       {
@@ -396,13 +439,25 @@ namespace gr
         {
           if(i == j) continue;
 
-          if(IQ_distance(in[center_idx[i]], in[center_idx[j]]) < cutoff_distance)
+          if(in[center_idx[i]].real() == in[center_idx[j]].real() && in[center_idx[i]].imag() == in[center_idx[j]].imag())
           {
             center_idx.erase(center_idx.begin() + j);
             j--;
           }
         }
       }
+      
+      cluster << " **center idx**" << std::endl;
+      for(int i=0 ; i<center_idx.size() ; i++)
+        cluster << center_idx[i] << " ";
+      cluster << std::endl << "** center I " << std::endl;
+      for(int i=0 ; i<center_idx.size() ; i++)
+        cluster << in[center_idx[i]].real() << " ";
+      cluster << std::endl << "** center Q " << std::endl;
+      for(int i=0 ; i<center_idx.size() ; i++)
+        cluster << in[center_idx[i]].imag() << " ";
+      cluster << std::endl;
+      cluster.close();
 
       int n_tag = -1;
       {
@@ -413,7 +468,7 @@ namespace gr
           n_tag++;
         }
       }
-
+/*
       int erase = center_idx.size() - pow(2, n_tag);
       for(; erase>0 ; erase--)
       {
@@ -437,7 +492,7 @@ namespace gr
 
         center_idx.erase(center_idx.begin() + min_idx);
       }
-
+*/
       if(count == 0) center_idx.push_back(-1);
 
       return center_idx;
