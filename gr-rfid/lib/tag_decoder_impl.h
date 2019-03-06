@@ -59,14 +59,20 @@ namespace gr {
         std::vector<int> cut_noise_sample(std::vector<float> in, const int size, const int data_len);
         double IQ_distance(const gr_complex p1, const gr_complex p2);
         std::vector<int> clustering_algorithm(const std::vector<gr_complex> in, const int size);
+        float norm_2dim_gaussian_pdf(const gr_complex value, const gr_complex mean, const float standard_deviation);
+        float pd_i_k(const std::vector<gr_complex> in, const int i, const int k);
+        float pt_i_k(const std::vector<int> clustered_idx, const int size, const int i, const int k);
+        int max_id_pcluster_i(const std::vector<gr_complex> in, const std::vector<int> clustered_idx, const int size, const std::vector<int> center, const int i);
+        float max_value_pcluster_i(const std::vector<gr_complex> in, const std::vector<int> clustered_idx, const int size, const std::vector<int> center, const int i);
+        std::vector<int> sample_clustering(const std::vector<gr_complex> in, const int size, const std::vector<int> center);
         std::vector<int> assign_sample_to_cluster(const std::vector<gr_complex> in, const int size, const std::vector<int> center);
 
-        int filter_aligned_flip(const std::vector<int> clustered_idx);
         void count_flip(int** flip_info, const std::vector<int> clustered_idx, int size);
         int check_odd_cycle_OFG(OFG_node* OFG, int start, int compare, int check, std::vector<int> stack);
         void construct_OFG(OFG_node* OFG, int** flip_info, int size, int n_tag);
         void determine_OFG_state(OFG_node* OFG, int size, int n_tag);
         void extract_parallel_sample(std::vector<int>* extracted_sample, const std::vector<int> clustered_idx, const OFG_node* OFG, int n_tag);
+        void print_cluster_sample(const std::string filename, const std::vector<gr_complex> in, const std::vector<int> clustered_idx, const int size, const std::vector<int> center);
 
         int check_crc(char * bits, int num_bits);
 
