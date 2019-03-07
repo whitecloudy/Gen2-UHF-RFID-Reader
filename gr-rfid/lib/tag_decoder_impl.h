@@ -43,20 +43,49 @@ namespace gr {
         FILE *preamble_fp;
         int success_count;
 
-        int check_crc(char * bits, int num_bits);
+        class sample_information
+        {
+          private:
+            gr_complex* _in;
+            int _total_size;
+            std::vector<float> _norm_in;
+            std::vector<gr_complex> _sample;
+            std::vector<float> _norm_sample;
+            int _size;
+
+            std::vector<int> _center;
+            std::vector<int> _cluster;
+
+          public:
+            sample_information();
+            ~sample_information();
+
+            void set_in(gr_complex*);
+            void set_total_size(int);
+            void calc_norm_in();
+            void cut_noise_sample(int, int);
+
+            void push_back_center(int);
+            void erase_center(int);
+            void push_back_cluster(int);
+            void set_cluster(int, int);
+
+            gr_complex in(int);
+            int total_size(void);
+            float norm_in(int);
+            gr_complex sample(int);
+            float norm_sample(int);
+            int size(void);
+
+            int center(int);
+            int center_size(void);
+            int cluster(int);
+        };
 
         //tag_decoder_impl.cc
-        const gr_complex* in;
-        std::vector<float> norm_in;
-        std::vector<gr_complex> sample;
-        std::vector<float> norm_sample;
-        int size;
+        int check_crc(char * bits, int num_bits);
 
         // tag_decoder_decoder.cc
-        std::vector<int> center;
-        std::vector<int> clustered_id;
-
-        int cut_noise_sample(std::vector<float> in, const int total_len, const int data_len);
         int tag_sync(std::vector<float> in, int size);
         int determine_first_mask_level(std::vector<float> in, int index);
         int decode_single_bit(std::vector<float> in, int index, int mask_level, float* ret_corr);
@@ -64,14 +93,14 @@ namespace gr {
 
         // tag_decoder_clustering.cc
         double IQ_distance(const gr_complex p1, const gr_complex p2);
-        void center_identification();
+        void center_identification(sample_information* ys);
         float norm_2dim_gaussian_pdf(const gr_complex value, const gr_complex mean, const float standard_deviation);
-        float pd_i_k(const int i, const int k);
-        float pt_i_k(const int i, const int k);
-        int max_id_pcluster_i(const int i);
-        float max_value_pcluster_i(const int i);
-        void sample_clustering();
-        void print_cluster_sample(const std::string filename);
+        float pd_i_k(sample_information* ys, const int i, const int k);
+        float pt_i_k(sample_information* ys, const int i, const int k);
+        int max_id_pcluster_i(sample_information* ys, const int i);
+        float max_value_pcluster_i(sample_information* ys, const int i);
+        void sample_clustering(sample_information* ys);
+        void print_cluster_sample(sample_information* ys, const std::string filename);
 
         // tag_decoder_OFG.cc
         typedef struct _OFG_node

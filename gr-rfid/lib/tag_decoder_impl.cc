@@ -1,23 +1,3 @@
-/* -*- c++ -*- */
-/*
-* Copyright 2015 <Nikos Kargas (nkargas@isc.tuc.gr)>.
-*
-* This is free software; you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation; either version 3, or (at your option)
-* any later version.
-*
-* This software is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with this software; see the file COPYING.  If not, write to
-* the Free Software Foundation, Inc., 51 Franklin Street,
-* Boston, MA 02110-1301, USA.
-*/
-
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -28,8 +8,6 @@
 #include <cmath>
 #include <sys/time.h>
 #include "tag_decoder_impl.h"
-
-#define SHIFT_SIZE 3  // used in tag_detection
 
 namespace gr
 {
@@ -46,42 +24,26 @@ namespace gr
       (new tag_decoder_impl(sample_rate,output_sizes));
     }
 
-    /*
-    * The private constructor
-    */
     tag_decoder_impl::tag_decoder_impl(int sample_rate, std::vector<int> output_sizes)
-    : gr::block("tag_decoder",
-    gr::io_signature::make(1, 1, sizeof(gr_complex)),
-    gr::io_signature::makev(2, 2, output_sizes )),
-    s_rate(sample_rate)
+    : gr::block("tag_decoder", gr::io_signature::make(1, 1, sizeof(gr_complex)), gr::io_signature::makev(2, 2, output_sizes)), s_rate(sample_rate)
     {
-      char_bits = (char *) malloc( sizeof(char) * 128);
-
-      n_samples_TAG_BIT = TAG_BIT_D * s_rate / pow(10,6);
-      //GR_LOG_INFO(d_logger, "Number of samples of Tag bit : "<< n_samples_TAG_BIT);
+      char_bits = new char[128];
+      n_samples_TAG_BIT = TAG_BIT_D * s_rate / pow(10, 6);
     }
 
-    /*
-    * Our virtual destructor.
-    */
     tag_decoder_impl::~tag_decoder_impl()
     {
 
     }
 
-    void
-    tag_decoder_impl::forecast (int noutput_items, gr_vector_int &ninput_items_required)
+    void tag_decoder_impl::forecast (int noutput_items, gr_vector_int &ninput_items_required)
     {
       ninput_items_required[0] = noutput_items;
     }
 
-    int
-    tag_decoder_impl::general_work (int noutput_items,
-      gr_vector_int &ninput_items,
-      gr_vector_const_void_star &input_items,
-      gr_vector_void_star &output_items)
+    int tag_decoder_impl::general_work (int noutput_items, gr_vector_int &ninput_items, gr_vector_const_void_star &input_items, gr_vector_void_star &output_items)
     {
-      float *out = (float *) output_items[0];
+      float* out = (float*)output_items[0];
       int consumed = 0;
 
       std::ofstream log;
@@ -89,25 +51,22 @@ namespace gr
       std::ofstream debug;
       #endif
 
-      in = (const gr_complex*) input_items[0];
-
-      // convert from complex value to float value
-      for(int i=0 ; i<ninput_items[0] ; i++)
-        norm_in.push_back(std::sqrt(std::norm(in[i])));
-
       // Processing only after n_samples_to_ungate are available and we need to decode an RN16
       if(reader_state->decoder_status == DECODER_DECODE_RN16 && ninput_items[0] >= reader_state->n_samples_to_ungate)
       {
-        int cut_id = cut_noise_sample(norm_in, ninput_items[0], TAG_PREAMBLE_BITS+RN16_BITS-1);
-        for(int i=cut_id ; i<cut_id+size ; i++)
-        {
-          sample.push_back(in[i]);
-          norm_sample.push_back(norm_in[i]);
-        }
+        log.open("chk", std::ios::app);
 
-        center_identification();
-        sample_clustering();
-        print_cluster_sample("cluster_sample");
+        sample_information ys;
+        ys.set_in((gr_complex*)input_items[0]);
+        ys.set_total_size(ninput_items[0]);
+        ys.calc_norm_in();
+        ys.cut_noise_sample(TAG_PREAMBLE_BITS + RN16_BITS - 1, n_samples_TAG_BIT);
+
+        center_identification(&ys);
+        sample_clustering(&ys);
+        print_cluster_sample(&ys, "cluster_sample");
+
+        log.close();
 /*
         int n_tag = -1;
         {
@@ -295,7 +254,7 @@ namespace gr
       // Processing only after n_samples_to_ungate are available and we need to decode an EPC
       else if (reader_state->decoder_status == DECODER_DECODE_EPC && ninput_items[0] >= reader_state->n_samples_to_ungate )
       {
-        #ifdef DEBUG_MESSAGE
+        /*#ifdef DEBUG_MESSAGE
         {
           debug.open((debug_message+std::to_string(reader_state->reader_stats.cur_inventory_round)+"_"+std::to_string(reader_state->reader_stats.cur_slot_number)).c_str(), std::ios::app);
           debug << "n_samples_to_ungate= " << reader_state->n_samples_to_ungate << ", ninput_items[0]= " << ninput_items[0] << std::endl;
@@ -433,7 +392,7 @@ namespace gr
         log.close();
 
         // process for GNU RADIO
-        consumed = reader_state->n_samples_to_ungate;
+        consumed = reader_state->n_samples_to_ungate;*/
       }
 
       consume_each(consumed);

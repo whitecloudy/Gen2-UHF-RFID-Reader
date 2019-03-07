@@ -30,6 +30,7 @@ list(APPEND rfid_sources
     gate_impl.cc
     reader_impl.cc
     tag_decoder_impl.cc
+    tag_decoder_class.cc
     tag_decoder_decoder.cc
     tag_decoder_clustering.cc
     tag_decoder_OFG.cc

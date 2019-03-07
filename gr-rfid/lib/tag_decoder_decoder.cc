@@ -10,46 +10,6 @@ namespace gr
 {
   namespace rfid
   {
-    int tag_decoder_impl::cut_noise_sample(std::vector<float> in, const int total_len, const int data_len)
-    {
-      int return_id;
-      int idx = 1;
-      const float threshold = 0.002;
-      float average = in[0];
-
-      for(; idx<total_len ; idx++)
-      {
-        average += in[idx];
-        average /= 2;
-        if(std::abs(in[idx] - average) > threshold) break;
-      }
-
-      return_id = idx;  // start idx of the data sample
-
-      idx += data_len*n_samples_TAG_BIT;
-      average = in[idx];
-      int count = 0;
-
-      for(int i=1 ; idx+i<size ; i++)
-      {
-        average += in[idx+i];
-        average /= 2;
-
-        if(std::abs(in[idx+i] - average) > threshold)
-        {
-          count = 0;
-          idx += i;
-          i = 0;
-          average = in[idx];
-        }
-        else count++;
-        if(count >= 1.5 * n_samples_TAG_BIT) break;
-      }
-
-      size = idx - return_id + 1;  // size of the data sample
-      return return_id;
-    }
-
     int tag_decoder_impl::tag_sync(std::vector<float> norm_in, int size)
     // This method searches the preamble and returns the start index of the tag data.
     // If the correlation value exceeds the threshold, it returns the start index of the tag data.

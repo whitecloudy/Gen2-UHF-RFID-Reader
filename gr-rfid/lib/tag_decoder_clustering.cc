@@ -15,7 +15,7 @@ namespace gr
       return std::sqrt(std::pow((p1.real() - p2.real()), 2) + std::pow((p1.imag() - p2.imag()), 2));
     }
 
-    void tag_decoder_impl::center_identification()
+    void tag_decoder_impl::center_identification(sample_information* ys)
     {
       std::vector<int> local_density;
       std::vector<double> local_distance;
@@ -29,15 +29,15 @@ namespace gr
       double max_decision = 0;
 
       // calculate local density and continuity
-      for(int i=0 ; i<size ; i++)
+      for(int i=0 ; i<ys->size() ; i++)
       {
         int current_local_density = -1;
         double current_continuity = -1;
         int count = 0;
 
-        for(int j=0 ; j<size ; j++)
+        for(int j=0 ; j<ys->size() ; j++)
         {
-          if(IQ_distance(sample[i], sample[j]) < CUTOFF_DISTANCE)
+          if(IQ_distance(ys->sample(i), ys->sample(j)) < CUTOFF_DISTANCE)
           {
             current_local_density++;
             if(j >= i - half_time_window && j <= i + half_time_window)
@@ -54,15 +54,15 @@ namespace gr
       }
 
       // calculate local distance
-      for(int i=0 ; i<size ; i++)
+      for(int i=0 ; i<ys->size() ; i++)
       {
         double min_distance = 1;
 
-        for(int j=0 ; j<size ; j++)
+        for(int j=0 ; j<ys->size() ; j++)
         {
           if(local_density[i] >= local_density[j]) continue;
 
-          double distance = IQ_distance(sample[i], sample[j]);
+          double distance = IQ_distance(ys->sample(i), ys->sample(j));
           if(distance < min_distance) min_distance = distance;
         }
 
@@ -75,14 +75,14 @@ namespace gr
       }
 
       // normalize local distance
-      for(int i=0 ; i<size ; i++)
+      for(int i=0 ; i<ys->size() ; i++)
       {
         if(local_distance[i] == 1) continue;  // the maximum center
         local_distance[i] = 0.8 * ((local_distance[i] - min_local_distance) / (max_local_distance - min_local_distance));
       }
 
       // calculate decision
-      for(int i=0 ; i<size ; i++)
+      for(int i=0 ; i<ys->size() ; i++)
       {
         double current_decision = local_density[i] * local_distance[i] * continuity[i];
         if(current_decision > max_decision) max_decision = current_decision;
@@ -90,21 +90,21 @@ namespace gr
       }
 
       // center identification
-      for(int i=0 ; i<size ; i++)
+      for(int i=0 ; i<ys->size() ; i++)
       {
-        if(decision[i] > max_decision * 0.1) center.push_back(i);
+        if(decision[i] > max_decision * 0.1) ys->push_back_center(i);
       }
 
       // remove center which the location is same
-      for(int i=0 ; i<center.size() ; i++)
+      for(int i=0 ; i<ys->center_size() ; i++)
       {
-        for(int j=i ; j<center.size() ; j++)
+        for(int j=i ; j<ys->center_size() ; j++)
         {
           if(i == j) continue;
 
-          if(sample[center[i]] == sample[center[j]])
+          if(ys->sample(ys->center(i)) == ys->sample(ys->center(j)))
           {
-            center.erase(center.begin() + j);
+            ys->erase_center(j);
             j--;
           }
         }
@@ -116,40 +116,40 @@ namespace gr
       return std::exp(- (std::pow(value.real() - mean.real(), 2) + std::pow(value.imag() - mean.imag(), 2)) / (2 * std::pow(standard_deviation, 2)));
     }
 
-    float tag_decoder_impl::pd_i_k(const int i, const int k)
+    float tag_decoder_impl::pd_i_k(sample_information* ys, const int i, const int k)
     {
-      return norm_2dim_gaussian_pdf(sample[i], sample[center[k]], CUTOFF_DISTANCE);
+      return norm_2dim_gaussian_pdf(ys->sample(i), ys->sample(ys->center(k)), CUTOFF_DISTANCE);
     }
 
-    float tag_decoder_impl::pt_i_k(const int i, const int k)
+    float tag_decoder_impl::pt_i_k(sample_information* ys, const int i, const int k)
     {
       int count = 0;
       int window_size = 0;
 
       int half_time_window = n_samples_TAG_BIT / 2;
       int start = ((i - half_time_window) >= 0) ? (i - half_time_window) : 0;
-      int end = ((i + half_time_window) <= size) ? (i + half_time_window) : size;
+      int end = ((i + half_time_window) <= ys->size()) ? (i + half_time_window) : ys->size();
 
       for(int j=start ; j<end ; j++)
       {
-        if(clustered_id[j] == -1) continue; // no count unclustered sample
+        if(ys->cluster(j) == -1) continue; // no count unclustered sample
 
         window_size++;
-        if(clustered_id[j] == k) count++;
+        if(ys->cluster(j) == k) count++;
       }
 
       if(window_size == 0) return 0;
       return (float)count / window_size;
     }
 
-    int tag_decoder_impl::max_id_pcluster_i(const int i)
+    int tag_decoder_impl::max_id_pcluster_i(sample_information* ys, const int i)
     {
       float max_pcluster = 0;
       int max_id;
 
-      for(int k=0 ; k<center.size() ; k++)
+      for(int k=0 ; k<ys->center_size() ; k++)
       {
-        float pcluster = pd_i_k(i, k) * pt_i_k(i, k);
+        float pcluster = pd_i_k(ys, i, k) * pt_i_k(ys, i, k);
         if(pcluster > max_pcluster)
         {
           max_pcluster = pcluster;
@@ -160,31 +160,31 @@ namespace gr
       return max_id;
     }
 
-    float tag_decoder_impl::max_value_pcluster_i(const int i)
+    float tag_decoder_impl::max_value_pcluster_i(sample_information* ys, const int i)
     {
       float max_pcluster = 0;
 
-      for(int k=0 ; k<center.size() ; k++)
+      for(int k=0 ; k<ys->center_size() ; k++)
       {
-        float pcluster = pd_i_k(i, k) * pt_i_k(i, k);
+        float pcluster = pd_i_k(ys, i, k) * pt_i_k(ys, i, k);
         if(pcluster > max_pcluster) max_pcluster = pcluster;
       }
 
       return max_pcluster;
     }
 
-    void tag_decoder_impl::sample_clustering()
+    void tag_decoder_impl::sample_clustering(sample_information* ys)
     {
       float threshold = 0.4;
 
-      for(int i=0 ; i<size ; i++)
+      for(int i=0 ; i<ys->size() ; i++)
       {
         int candidate_id = -1;
         bool chk = true;
 
-        for(int k=0 ; k<center.size() ; k++)
+        for(int k=0 ; k<ys->center_size() ; k++)
         {
-          if(pd_i_k(i, k) > threshold)
+          if(pd_i_k(ys, i, k) > threshold)
           {
             if(candidate_id == -1) candidate_id = k;  // first candidate
             else  // when the candidate is more than one, need to calculate pcluster
@@ -195,47 +195,47 @@ namespace gr
           }
         }
 
-        if(chk) clustered_id.push_back(candidate_id);
-        else clustered_id.push_back(-1);
+        if(chk) ys->push_back_cluster(candidate_id);
+        else ys->push_back_cluster(-1);
       }
 
-      for(int i=0 ; i<size ; i++)
+      for(int i=0 ; i<ys->size() ; i++)
       {
-        if(clustered_id[i] != -1) continue;  // already clustered
-        clustered_id[i] = max_id_pcluster_i(i);
+        if(ys->cluster(i) != -1) continue;  // already clustered
+        ys->set_cluster(i, max_id_pcluster_i(ys, i));
       }
     }
 
-    void tag_decoder_impl::print_cluster_sample(const std::string filename)
+    void tag_decoder_impl::print_cluster_sample(sample_information* ys, const std::string filename)
     {
       std::ofstream file(filename, std::ios::app);
 
       file << "\t\t\t\t\t** center_id **" << std::endl;
-      for(int i=0 ; i<center.size() ; i++)
-        file << center[i] << " ";
+      for(int i=0 ; i<ys->center_size() ; i++)
+        file << ys->center(i) << " ";
       file << std::endl << std::endl;
 
       file << "\t\t\t\t\t** center(I) **" << std::endl;
-      for(int i=0 ; i<center.size() ; i++)
-        file << sample[center[i]].real() << " ";
+      for(int i=0 ; i<ys->center_size() ; i++)
+        file << ys->sample(ys->center(i)).real() << " ";
       file << std::endl;
       file << "\t\t\t\t\t** center(Q) **" << std::endl;
-      for(int i=0 ; i<center.size() ; i++)
-        file << sample[center[i]].imag() << " ";
+      for(int i=0 ; i<ys->center_size() ; i++)
+        file << ys->sample(ys->center(i)).imag() << " ";
       file << std::endl << std::endl;
 
-      for(int i=0 ; i<center.size() ; i++)
+      for(int i=0 ; i<ys->center_size() ; i++)
       {
         file << "\t\t\t\t\t** cluster " << i << " (I) **" << std::endl;
-        for(int j=0 ; j<size ; j++)
+        for(int j=0 ; j<ys->size() ; j++)
         {
-          if(clustered_id[j] == i) file << sample[j].real() << " ";
+          if(ys->cluster(j) == i) file << ys->sample(j).real() << " ";
         }
         file << std::endl;
         file << "\t\t\t\t\t** cluster " << i << " (Q) **" << std::endl;
-        for(int j=0 ; j<size ; j++)
+        for(int j=0 ; j<ys->size() ; j++)
         {
-          if(clustered_id[j] == i) file << sample[j].imag() << " ";
+          if(ys->cluster(j) == i) file << ys->sample(j).imag() << " ";
         }
         file << std::endl << std::endl;
       }
