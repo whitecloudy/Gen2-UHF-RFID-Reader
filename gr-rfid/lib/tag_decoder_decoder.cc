@@ -10,22 +10,21 @@ namespace gr
 {
   namespace rfid
   {
-    std::vector<int> tag_decoder_impl::cut_noise_sample(std::vector<float> in, const int size, const int data_len)
+    int tag_decoder_impl::cut_noise_sample(std::vector<float> in, const int total_len, const int data_len)
     {
-      std::vector<int> output;
-
+      int return_id;
       int idx = 1;
       const float threshold = 0.002;
       float average = in[0];
 
-      for(; idx<size ; idx++)
+      for(; idx<total_len ; idx++)
       {
         average += in[idx];
         average /= 2;
         if(std::abs(in[idx] - average) > threshold) break;
       }
 
-      output.push_back(idx);  // start idx of the data sample
+      return_id = idx;  // start idx of the data sample
 
       idx += data_len*n_samples_TAG_BIT;
       average = in[idx];
@@ -47,8 +46,8 @@ namespace gr
         if(count >= 1.5 * n_samples_TAG_BIT) break;
       }
 
-      output.push_back(idx-output[0]+1);  // size of the data sample
-      return output;
+      size = idx - return_id + 1;  // size of the data sample
+      return return_id;
     }
 
     int tag_decoder_impl::tag_sync(std::vector<float> norm_in, int size)

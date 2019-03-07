@@ -81,8 +81,6 @@ namespace gr
       gr_vector_const_void_star &input_items,
       gr_vector_void_star &output_items)
     {
-      const gr_complex *in = (const  gr_complex *) input_items[0];
-      std::vector<float> norm_in;
       float *out = (float *) output_items[0];
       int consumed = 0;
 
@@ -91,6 +89,8 @@ namespace gr
       std::ofstream debug;
       #endif
 
+      in = (const gr_complex*) input_items[0];
+
       // convert from complex value to float value
       for(int i=0 ; i<ninput_items[0] ; i++)
         norm_in.push_back(std::sqrt(std::norm(in[i])));
@@ -98,20 +98,17 @@ namespace gr
       // Processing only after n_samples_to_ungate are available and we need to decode an RN16
       if(reader_state->decoder_status == DECODER_DECODE_RN16 && ninput_items[0] >= reader_state->n_samples_to_ungate)
       {
-        std::vector<int> data_idx = cut_noise_sample(norm_in, ninput_items[0], TAG_PREAMBLE_BITS+RN16_BITS-1);
-
-        std::vector<gr_complex> cut_in;
-        std::vector<float> cut_norm_in;
-        for(int i=data_idx[0] ; i<data_idx[0]+data_idx[1] ; i++)
+        int cut_id = cut_noise_sample(norm_in, ninput_items[0], TAG_PREAMBLE_BITS+RN16_BITS-1);
+        for(int i=cut_id ; i<cut_id+size ; i++)
         {
-          cut_in.push_back(in[i]);
-          cut_norm_in.push_back(norm_in[i]);
+          sample.push_back(in[i]);
+          norm_sample.push_back(norm_in[i]);
         }
 
-        std::vector<int> center = clustering_algorithm(cut_in, data_idx[1]);
-        std::vector<int> clustered_idx = sample_clustering(cut_in, data_idx[1], center);
-        print_cluster_sample("cluster_sample", cut_in, clustered_idx, data_idx[1], center);
-
+        center_identification();
+        sample_clustering();
+        print_cluster_sample("cluster_sample");
+/*
         int n_tag = -1;
         {
           int size = center.size();
@@ -285,7 +282,7 @@ namespace gr
             }
             log.close();
           }
-        }
+        }*/
 
         // process for GNU RADIO
         int written_sync = 0;
