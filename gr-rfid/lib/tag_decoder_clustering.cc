@@ -435,45 +435,59 @@ namespace gr
           }
         }
 
-        print_cluster_sample(ys, "cluster_sample");
+        #ifdef DEBUG_MESSAGE_CLUSTER
+        print_cluster_sample(ys);
+        #endif
       }
     }
 
-    void tag_decoder_impl::print_cluster_sample(sample_information* ys, const std::string filename)
+    void tag_decoder_impl::calc_n_tag(sample_information* ys)
     {
-      std::ofstream file(filename, std::ios::app);
+      int size = ys->center_size();
+      ys->set_n_tag(0);
 
-      file << "\t\t\t\t\t** center_id **" << std::endl;
-      for(int i=0 ; i<ys->center_size() ; i++)
-        file << ys->center(i) << " ";
-      file << std::endl << std::endl;
+      while(size > 1)
+      {
+        ys->increase_n_tag();
+        size /= 2;
+      }
+    }
 
-      file << "\t\t\t\t\t** center(I) **" << std::endl;
+    #ifdef DEBUG_MESSAGE_CLUSTER
+    void tag_decoder_impl::print_cluster_sample(sample_information* ys)
+    {
+      debug_cluster << "\t\t\t\t\t** center_id **" << std::endl;
       for(int i=0 ; i<ys->center_size() ; i++)
-        file << ys->sample(ys->center(i)).real() << " ";
-      file << std::endl;
-      file << "\t\t\t\t\t** center(Q) **" << std::endl;
+        debug_cluster << ys->center(i) << " ";
+      debug_cluster << std::endl << std::endl;
+
+      debug_cluster << "\t\t\t\t\t** center(I) **" << std::endl;
       for(int i=0 ; i<ys->center_size() ; i++)
-        file << ys->sample(ys->center(i)).imag() << " ";
-      file << std::endl << std::endl;
+        debug_cluster << ys->sample(ys->center(i)).real() << " ";
+      debug_cluster << std::endl;
+      debug_cluster << "\t\t\t\t\t** center(Q) **" << std::endl;
+      for(int i=0 ; i<ys->center_size() ; i++)
+        debug_cluster << ys->sample(ys->center(i)).imag() << " ";
+      debug_cluster << std::endl << std::endl;
 
       for(int i=0 ; i<ys->center_size() ; i++)
       {
-        file << "\t\t\t\t\t** cluster " << i << " (I) **" << std::endl;
+        debug_cluster << "\t\t\t\t\t** cluster " << i << " (I) **" << std::endl;
         for(int j=0 ; j<ys->size() ; j++)
         {
-          if(ys->cluster(j) == i) file << ys->sample(j).real() << " ";
+          if(ys->cluster(j) == i) debug_cluster << ys->sample(j).real() << " ";
         }
-        file << std::endl;
-        file << "\t\t\t\t\t** cluster " << i << " (Q) **" << std::endl;
+        debug_cluster << std::endl;
+        debug_cluster << "\t\t\t\t\t** cluster " << i << " (Q) **" << std::endl;
         for(int j=0 ; j<ys->size() ; j++)
         {
-          if(ys->cluster(j) == i) file << ys->sample(j).imag() << " ";
+          if(ys->cluster(j) == i) debug_cluster << ys->sample(j).imag() << " ";
         }
-        file << std::endl << std::endl;
+        debug_cluster << std::endl << std::endl;
       }
 
-      file.close();
+      debug_cluster << std::endl << std::endl << std::endl;
     }
+    #endif
   }
 }

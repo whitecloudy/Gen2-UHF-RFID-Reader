@@ -17,29 +17,36 @@ namespace gr
       _norm_sample.clear();
       _size = 0;
 
+      _decision.clear();
       _center.clear();
       _cluster.clear();
+      _n_tag = 0;
+    }
+
+    tag_decoder_impl::sample_information::sample_information(gr_complex* __in, int __total_size, int n_samples_TAG_BIT, int mode)
+    // mode: 0:RN16, 1:EPC
+    {
+      _in = __in;
+      _total_size = __total_size;
+      _norm_in.clear();
+      for(int i=0 ; i<_total_size ; i++)
+        _norm_in.push_back(std::sqrt(std::norm(_in[i])));
+
+      _sample.clear();
+      _norm_sample.clear();
+      _size = 0;
+      if(mode == 0) cut_noise_sample(TAG_PREAMBLE_BITS + RN16_BITS - 1, n_samples_TAG_BIT);
+      else if(mode == 1) cut_noise_sample(TAG_PREAMBLE_BITS + EPC_BITS - 1, n_samples_TAG_BIT);
+
+      _decision.clear();
+      _center.clear();
+      _cluster.clear();
+      _n_tag = 0;
     }
 
     tag_decoder_impl::sample_information::~sample_information()
     {
 
-    }
-
-    void tag_decoder_impl::sample_information::set_in(gr_complex* __in)
-    {
-      _in = __in;
-    }
-
-    void tag_decoder_impl::sample_information::set_total_size(int __total_size)
-    {
-      _total_size = __total_size;
-    }
-
-    void tag_decoder_impl::sample_information::calc_norm_in(void)
-    {
-      for(int i=0 ; i<_total_size ; i++)
-        _norm_in.push_back(std::sqrt(std::norm(_in[i])));
     }
 
     void tag_decoder_impl::sample_information::cut_noise_sample(int data_len, int n_samples_TAG_BIT)
@@ -123,6 +130,16 @@ namespace gr
       _cluster.clear();
     }
 
+    void tag_decoder_impl::sample_information::set_n_tag(int __n_tag)
+    {
+      _n_tag = __n_tag;
+    }
+
+    void tag_decoder_impl::sample_information::increase_n_tag(void)
+    {
+      _n_tag++;
+    }
+
     gr_complex tag_decoder_impl::sample_information::in(int index)
     {
       return _in[index];
@@ -166,6 +183,11 @@ namespace gr
     int tag_decoder_impl::sample_information::cluster(int index)
     {
       return _cluster[index];
+    }
+
+    int tag_decoder_impl::sample_information::n_tag(void)
+    {
+      return _n_tag;
     }
   } /* namespace rfid */
 } /* namespace gr */

@@ -27,13 +27,16 @@
 #include <time.h>
 #include <numeric>
 #include <fstream>
-namespace gr {
-  namespace rfid {
 
+#define DEBUG_MESSAGE_CLUSTER
+
+namespace gr
+{
+  namespace rfid
+  {
     class tag_decoder_impl : public tag_decoder
     {
       private:
-
         float n_samples_TAG_BIT;
         int s_rate;
         std::vector<float> pulse_bit;
@@ -56,15 +59,13 @@ namespace gr {
             std::vector<double> _decision;
             std::vector<int> _center;
             std::vector<int> _cluster;
+            int _n_tag;
 
           public:
             sample_information();
-            ~sample_information();
-
-            void set_in(gr_complex*);
-            void set_total_size(int);
-            void calc_norm_in();
+            sample_information(gr_complex*, int, int, int);
             void cut_noise_sample(int, int);
+            ~sample_information();
 
             void push_back_decision(double);
             void push_back_center(int);
@@ -73,6 +74,8 @@ namespace gr {
             void set_cluster(int, int);
             void decrease_cluster(int);
             void clear_cluster(void);
+            void set_n_tag(int);
+            void increase_n_tag(void);
 
             gr_complex in(int);
             int total_size(void);
@@ -85,9 +88,12 @@ namespace gr {
             int center(int);
             int center_size(void);
             int cluster(int);
+            int n_tag(void);
         };
 
         //tag_decoder_impl.cc
+        int extract_parallel_sample(sample_information* ys, int mode);
+
         int check_crc(char * bits, int num_bits);
 
         // tag_decoder_decoder.cc
@@ -113,7 +119,11 @@ namespace gr {
         float poe_k(sample_information* ys, const std::vector<float> r_area, const std::vector<float> r_num, const int k);
         void clustering_error_detection(sample_information *ys);
 
-        void print_cluster_sample(sample_information* ys, const std::string filename);
+        void calc_n_tag(sample_information* ys);
+
+        #ifdef DEBUG_MESSAGE_CLUSTER
+        void print_cluster_sample(sample_information* ys);
+        #endif
 
         // tag_decoder_OFG.cc
         typedef struct _OFG_node
@@ -128,7 +138,12 @@ namespace gr {
         int check_odd_cycle_OFG(OFG_node* OFG, int start, int compare, int check, std::vector<int> stack);
         void construct_OFG(OFG_node* OFG, int** flip_info, int size, int n_tag);
         void determine_OFG_state(OFG_node* OFG, int size, int n_tag);
-        void extract_parallel_sample(std::vector<int>* extracted_sample, const std::vector<int> clustered_idx, const OFG_node* OFG, int n_tag);
+        void extract_parallel_samplesss(std::vector<int>* extracted_sample, const std::vector<int> clustered_idx, const OFG_node* OFG, int n_tag);
+
+        // debug_message
+        #ifdef DEBUG_MESSAGE_CLUSTER
+        std::ofstream debug_cluster;
+        #endif
 
       public:
         tag_decoder_impl(int sample_rate, std::vector<int> output_sizes);
@@ -141,7 +156,6 @@ namespace gr {
             gr_vector_const_void_star &input_items,
             gr_vector_void_star &output_items);
     };
-
   } // namespace rfid
 } // namespace gr
 

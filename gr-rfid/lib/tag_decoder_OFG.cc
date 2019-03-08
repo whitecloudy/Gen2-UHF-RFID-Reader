@@ -250,7 +250,7 @@ namespace gr
       flipf.close();
     }
 
-    void tag_decoder_impl::extract_parallel_sample(std::vector<int>* extracted_sample, const std::vector<int> clustered_idx, const OFG_node* OFG, int n_tag)
+    void tag_decoder_impl::extract_parallel_samplesss(std::vector<int>* extracted_sample, const std::vector<int> clustered_idx, const OFG_node* OFG, int n_tag)
     {
       for(int i=0 ; i<clustered_idx.size() ; i++)
       {

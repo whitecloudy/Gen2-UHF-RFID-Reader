@@ -36,56 +36,84 @@ namespace gr
 
     }
 
-    void tag_decoder_impl::forecast (int noutput_items, gr_vector_int &ninput_items_required)
+    void tag_decoder_impl::forecast (int noutput_items, gr_vector_int& ninput_items_required)
     {
       ninput_items_required[0] = noutput_items;
     }
 
-    int tag_decoder_impl::general_work (int noutput_items, gr_vector_int &ninput_items, gr_vector_const_void_star &input_items, gr_vector_void_star &output_items)
+    int tag_decoder_impl::extract_parallel_sample(sample_information* ys, int mode)
+    {
+      #ifdef DEBUG_MESSAGE_CLUSTER
+      std::string debug_file_path = debug_folder_path + std::to_string(reader_state->reader_stats.cur_inventory_round) + "_" + std::to_string(reader_state->reader_stats.cur_slot_number) + "_";
+      if(mode == 0) debug_file_path = debug_file_path + "RN16_cluster";
+      debug_cluster.open(debug_file_path, std::ios::app);
+      #endif
+
+      center_identification(ys);
+      sample_clustering(ys);
+
+      #ifdef DEBUG_MESSAGE_CLUSTER
+      print_cluster_sample(ys);
+      #endif
+
+      if(ys->center_size() == 1 || !is_power_of_2(ys))
+      {
+        clustering_error_detection(ys);
+        ys->clear_cluster();
+        sample_clustering(ys);
+
+        #ifdef DEBUG_MESSAGE_CLUSTER
+        print_cluster_sample(ys);
+        #endif
+      }
+      calc_n_tag(ys);
+
+      #ifdef DEBUG_MESSAGE_CLUSTER
+      debug_cluster.close();
+      #endif
+
+      return ys->n_tag();
+    }
+
+    int tag_decoder_impl::general_work (int noutput_items, gr_vector_int& ninput_items, gr_vector_const_void_star& input_items, gr_vector_void_star& output_items)
     {
       float* out = (float*)output_items[0];
       int consumed = 0;
 
-      std::ofstream log;
-      #ifdef DEBUG_MESSAGE
-      std::ofstream debug;
-      #endif
+      if(ninput_items[0] >= reader_state->n_samples_to_ungate)
+      {
+        int mode = -1;  // 0:RN16, 1:EPC
+        if(reader_state->decoder_status == DECODER_DECODE_RN16) mode = 0;
+        else if(reader_state->decoder_status == DECODER_DECODE_EPC) mode = 1;
 
-      // Processing only after n_samples_to_ungate are available and we need to decode an RN16
+        sample_information ys((gr_complex*)input_items[0], ninput_items[0], n_samples_TAG_BIT, mode);
+        int n_tag = extract_parallel_sample(&ys, mode);
+
+
+        // process for GNU RADIO
+        produce(1, ninput_items[0]);
+        consumed = reader_state->n_samples_to_ungate;
+      }
+
+      std::ofstream log;
+
+      log.open("chk", std::ios::app);
+
+
+
+
+      log.close();
+
+
+      consume_each(consumed);
+      return WORK_CALLED_PRODUCE;
+    }
+
+/*      // Processing only after n_samples_to_ungate are available and we need to decode an RN16
       if(reader_state->decoder_status == DECODER_DECODE_RN16 && ninput_items[0] >= reader_state->n_samples_to_ungate)
       {
-        log.open("chk", std::ios::app);
 
-        sample_information ys;
-        ys.set_in((gr_complex*)input_items[0]);
-        ys.set_total_size(ninput_items[0]);
-        ys.calc_norm_in();
-        ys.cut_noise_sample(TAG_PREAMBLE_BITS + RN16_BITS - 1, n_samples_TAG_BIT);
 
-        center_identification(&ys);
-        sample_clustering(&ys);
-        print_cluster_sample(&ys, "cluster_sample");
-        if(ys.center_size() == 1 || !is_power_of_2(&ys))
-        {
-          clustering_error_detection(&ys);
-          ys.clear_cluster();
-          sample_clustering(&ys);
-          print_cluster_sample(&ys, "cluster_sample");
-        }
-        
-        log.close();
-/*
-        int n_tag = -1;
-        {
-          int size = center.size();
-          while(size)
-          {
-            size /= 2;
-            n_tag++;
-          }
-        }
-
-        std::cout << " | n_tag=" << n_tag << "\t";
         if(n_tag > 1)
         {
 
@@ -249,19 +277,14 @@ namespace gr
             log.close();
           }
         }*/
+/*
 
-        // process for GNU RADIO
-        int written_sync = 0;
-        for(int i=0 ; i<ninput_items[0] ; i++)
-          written_sync++;
-        produce(1, written_sync);
-        consumed = reader_state->n_samples_to_ungate;
       }
-
+*/
       // Processing only after n_samples_to_ungate are available and we need to decode an EPC
-      else if (reader_state->decoder_status == DECODER_DECODE_EPC && ninput_items[0] >= reader_state->n_samples_to_ungate )
+      /*else if (reader_state->decoder_status == DECODER_DECODE_EPC && ninput_items[0] >= reader_state->n_samples_to_ungate )
       {
-        /*#ifdef DEBUG_MESSAGE
+        #ifdef DEBUG_MESSAGE
         {
           debug.open((debug_message+std::to_string(reader_state->reader_stats.cur_inventory_round)+"_"+std::to_string(reader_state->reader_stats.cur_slot_number)).c_str(), std::ios::app);
           debug << "n_samples_to_ungate= " << reader_state->n_samples_to_ungate << ", ninput_items[0]= " << ninput_items[0] << std::endl;
@@ -399,12 +422,9 @@ namespace gr
         log.close();
 
         // process for GNU RADIO
-        consumed = reader_state->n_samples_to_ungate;*/
-      }
+        //consumed = reader_state->n_samples_to_ungate;
+      }*/
 
-      consume_each(consumed);
-      return WORK_CALLED_PRODUCE;
-    }
 
     /* Function adapted from https://www.cgran.org/wiki/Gen2 */
     int tag_decoder_impl::check_crc(char * bits, int num_bits)
