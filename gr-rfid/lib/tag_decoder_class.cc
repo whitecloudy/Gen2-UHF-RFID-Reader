@@ -88,6 +88,11 @@ namespace gr
       _size = end - start + 1;
     }
 
+    void tag_decoder_impl::sample_information::push_back_decision(double __decision)
+    {
+      _decision.push_back(__decision);
+    }
+
     void tag_decoder_impl::sample_information::push_back_center(int __center)
     {
       _center.push_back(__center);
@@ -106,6 +111,16 @@ namespace gr
     void tag_decoder_impl::sample_information::set_cluster(int index, int __cluster)
     {
       _cluster[index] = __cluster;
+    }
+
+    void tag_decoder_impl::sample_information::decrease_cluster(int index)
+    {
+      _cluster[index]--;
+    }
+
+    void tag_decoder_impl::sample_information::clear_cluster(void)
+    {
+      _cluster.clear();
     }
 
     gr_complex tag_decoder_impl::sample_information::in(int index)
@@ -131,6 +146,11 @@ namespace gr
     int tag_decoder_impl::sample_information::size(void)
     {
       return _size;
+    }
+
+    double tag_decoder_impl::sample_information::decision(int index)
+    {
+      return _decision[index];
     }
 
     int tag_decoder_impl::sample_information::center(int index)

@@ -65,7 +65,14 @@ namespace gr
         center_identification(&ys);
         sample_clustering(&ys);
         print_cluster_sample(&ys, "cluster_sample");
-
+        if(ys.center_size() == 1 || !is_power_of_2(&ys))
+        {
+          clustering_error_detection(&ys);
+          ys.clear_cluster();
+          sample_clustering(&ys);
+          print_cluster_sample(&ys, "cluster_sample");
+        }
+        
         log.close();
 /*
         int n_tag = -1;

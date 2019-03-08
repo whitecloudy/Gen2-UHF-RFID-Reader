@@ -53,6 +53,7 @@ namespace gr {
             std::vector<float> _norm_sample;
             int _size;
 
+            std::vector<double> _decision;
             std::vector<int> _center;
             std::vector<int> _cluster;
 
@@ -65,10 +66,13 @@ namespace gr {
             void calc_norm_in();
             void cut_noise_sample(int, int);
 
+            void push_back_decision(double);
             void push_back_center(int);
             void erase_center(int);
             void push_back_cluster(int);
             void set_cluster(int, int);
+            void decrease_cluster(int);
+            void clear_cluster(void);
 
             gr_complex in(int);
             int total_size(void);
@@ -77,6 +81,7 @@ namespace gr {
             float norm_sample(int);
             int size(void);
 
+            double decision(int);
             int center(int);
             int center_size(void);
             int cluster(int);
@@ -100,6 +105,14 @@ namespace gr {
         int max_id_pcluster_i(sample_information* ys, const int i);
         float max_value_pcluster_i(sample_information* ys, const int i);
         void sample_clustering(sample_information* ys);
+        void sample_clustering_after_splitting(sample_information* ys, const int prev_center, const int new_center);
+
+        bool is_power_of_2(sample_information* ys);
+        void calc_r_area(sample_information* ys, std::vector<float>* r_area);
+        void calc_r_num(sample_information* ys, std::vector<float>* r_num);
+        float poe_k(sample_information* ys, const std::vector<float> r_area, const std::vector<float> r_num, const int k);
+        void clustering_error_detection(sample_information *ys);
+
         void print_cluster_sample(sample_information* ys, const std::string filename);
 
         // tag_decoder_OFG.cc
