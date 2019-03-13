@@ -28,7 +28,9 @@
 #include <numeric>
 #include <fstream>
 
+#define DEBUG_MESSAGE_SAMPLE
 #define DEBUG_MESSAGE_CLUSTER
+#define DEBUG_MESSAGE_OFG
 
 namespace gr
 {
@@ -61,6 +63,8 @@ namespace gr
             std::vector<int> _cluster;
             int _n_tag;
 
+            int** _flip;
+
           public:
             sample_information();
             sample_information(gr_complex*, int, int, int);
@@ -77,6 +81,11 @@ namespace gr
             void set_n_tag(int);
             void increase_n_tag(void);
 
+            void allocate_flip(void);
+            void allocate_flip(int);
+            void set_flip(int, int, int);
+            void increase_flip(int, int);
+
             gr_complex in(int);
             int total_size(void);
             float norm_in(int);
@@ -89,10 +98,14 @@ namespace gr
             int center_size(void);
             int cluster(int);
             int n_tag(void);
+
+            int flip(int, int);
         };
 
         //tag_decoder_impl.cc
-        int extract_parallel_sample(sample_information* ys, int mode);
+        void print_sample(sample_information* ys);
+        int clustering_sample(sample_information* ys, int mode);
+        void extract_parallel_sample(sample_information* ys);
 
         int check_crc(char * bits, int num_bits);
 
@@ -121,6 +134,9 @@ namespace gr
 
         void calc_n_tag(sample_information* ys);
 
+        // tag_decoder_OFG.cc
+        void count_flip(sample_information* ys);
+
         #ifdef DEBUG_MESSAGE_CLUSTER
         void print_cluster_sample(sample_information* ys);
         #endif
@@ -134,27 +150,29 @@ namespace gr
           std::vector<int> link;
         } OFG_node;
 
-        void count_flip(int** flip_info, const std::vector<int> clustered_idx, int size);
         int check_odd_cycle_OFG(OFG_node* OFG, int start, int compare, int check, std::vector<int> stack);
         void construct_OFG(OFG_node* OFG, int** flip_info, int size, int n_tag);
         void determine_OFG_state(OFG_node* OFG, int size, int n_tag);
         void extract_parallel_samplesss(std::vector<int>* extracted_sample, const std::vector<int> clustered_idx, const OFG_node* OFG, int n_tag);
 
         // debug_message
+        std::ofstream log;
+        #ifdef DEBUG_MESSAGE_SAMPLE
+        std::ofstream debug_sample;
+        #endif
         #ifdef DEBUG_MESSAGE_CLUSTER
         std::ofstream debug_cluster;
+        #endif
+        #ifdef DEBUG_MESSAGE_CLUSTER
+        std::ofstream debug_OFG;
         #endif
 
       public:
         tag_decoder_impl(int sample_rate, std::vector<int> output_sizes);
         ~tag_decoder_impl();
 
-        void forecast (int noutput_items, gr_vector_int &ninput_items_required);
-
-        int general_work(int noutput_items,
-            gr_vector_int &ninput_items,
-            gr_vector_const_void_star &input_items,
-            gr_vector_void_star &output_items);
+        void forecast(int noutput_items, gr_vector_int &ninput_items_required);
+        int general_work(int noutput_items, gr_vector_int &ninput_items, gr_vector_const_void_star &input_items, gr_vector_void_star &output_items);
     };
   } // namespace rfid
 } // namespace gr

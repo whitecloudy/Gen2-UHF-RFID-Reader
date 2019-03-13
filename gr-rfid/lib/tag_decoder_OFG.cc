@@ -8,32 +8,32 @@ namespace gr
 {
   namespace rfid
   {
-    void tag_decoder_impl::count_flip(int** flip_info, const std::vector<int> clustered_idx, int size)
+    void tag_decoder_impl::count_flip(sample_information* ys)
     {
-      for(int i=0 ; i<size ; i++)
+      ys->allocate_flip();
+      for(int i=0 ; i<ys->center_size() ; i++)
       {
-        for(int j=0 ; j<size ; j++)
-          flip_info[i][j] = 0;
+        ys->allocate_flip(i);
+        for(int j=0 ; j<ys->center_size() ; j++)
+          ys->set_flip(i, j, 0);
       }
 
-      for(int i=0 ; i<clustered_idx.size()-1 ; i++)
+      for(int i=0 ; i<ys->size()-1 ; i++)
       {
-        if(clustered_idx[i] == clustered_idx[i+1]) continue;
-        flip_info[clustered_idx[i]][clustered_idx[i+1]]++;
+        if(ys->cluster(i) == ys->cluster(i+1)) continue;
+        ys->increase_flip(ys->cluster(i), ys->cluster(i+1));
       }
 
-      std::ofstream flip("flip", std::ios::app);
-
-      flip<<std::endl<<std::endl;
-      for(int i=0 ; i<size ; i++)
+      #ifdef DEBUG_MESSAGE_OFG
+      debug_OFG << "\t\t\t\t\t** flip **" << std::endl;
+      for(int i=0 ; i<ys->center_size() ; i++)
       {
-        for(int j=0 ; j<size ; j++)
-          flip << flip_info[i][j] << " ";
-        flip << std::endl;
+        for(int j=0 ; j<ys->center_size() ; j++)
+          debug_OFG << ys->flip(i, j) << " ";
+        debug_OFG << std::endl;
       }
-      flip << std::endl;
-
-      flip.close();
+      debug_OFG << std::endl << std::endl << std::endl << std::endl;
+      #endif
     }
 
     int tag_decoder_impl::check_odd_cycle_OFG(OFG_node* OFG, int start, int compare, int check, std::vector<int> stack)

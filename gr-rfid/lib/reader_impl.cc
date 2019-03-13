@@ -233,8 +233,6 @@ namespace gr
 
       int q_value;
 
-      std::ofstream log;
-
       consumed = ninput_items[0];
       FILE* file = fopen("a", "w"); fprintf(file, "a"); fclose(file); // dummy code (want to remove)
 
@@ -276,7 +274,7 @@ namespace gr
         case SEND_QUERY:
         //GR_LOG_INFO(d_debug_logger, "QUERY");
         //GR_LOG_INFO(d_debug_logger, "INVENTORY ROUND : " << reader_state->reader_stats.cur_inventory_round << " SLOT NUMBER : " << reader_state->reader_stats.cur_slot_number);
-        log.open("debug_message", std::ios::app);
+        log.open(log_file_path, std::ios::app);
         log << std::endl << "┌──────────────────────────────────────────────────" << std::endl;
         log << "│ Inventory Round: " << reader_state->reader_stats.cur_inventory_round << " | Slot Number: " << reader_state->reader_stats.cur_slot_number << std::endl;
         log.close();
@@ -309,7 +307,7 @@ namespace gr
         memcpy(&out[written], &cw_query[0], sizeof(float) * cw_query.size() );
         written+=cw_query.size();
 
-        log.open("debug_message", std::ios::app);
+        log.open(log_file_path, std::ios::app);
         log << "│ Send Query | Q= " << q_value << std::endl;
         log << "├──────────────────────────────────────────────────" << std::endl;
         log.close();
@@ -350,7 +348,7 @@ namespace gr
           }
 
           reader_state->reader_stats.ack_sent.push_back((std::to_string(reader_state->reader_stats.cur_inventory_round)+"_"+std::to_string(reader_state->reader_stats.cur_slot_number)).c_str());
-          log.open("debug_message", std::ios::app);
+          log.open(log_file_path, std::ios::app);
           log << "│ Send ACK" << std::endl;
           log << "├──────────────────────────────────────────────────" << std::endl;
           log.close();
@@ -371,7 +369,7 @@ namespace gr
         case SEND_QUERY_REP:
         //GR_LOG_INFO(d_debug_logger, "SEND QUERY_REP");
         //GR_LOG_INFO(d_debug_logger, "INVENTORY ROUND : " << reader_state->reader_stats.cur_inventory_round << " SLOT NUMBER : " << reader_state->reader_stats.cur_slot_number);
-        log.open("debug_message", std::ios::app);
+        log.open(log_file_path, std::ios::app);
         log << "│ Inventory Round: " << reader_state->reader_stats.cur_inventory_round << " | Slot Number: " << reader_state->reader_stats.cur_slot_number << std::endl;
         log.close();
         std::cout << std::endl << "[" << reader_state->reader_stats.cur_inventory_round << "_" << reader_state->reader_stats.cur_slot_number << "] ";
@@ -387,7 +385,7 @@ namespace gr
         memcpy(&out[written], &cw_query[0], sizeof(float) * cw_query.size());
         written+=cw_query.size();
 
-        log.open("debug_message", std::ios::app);
+        log.open(log_file_path, std::ios::app);
         log << "│ Send QueryRep" << std::endl;
         log << "├──────────────────────────────────────────────────" << std::endl;
         log.close();

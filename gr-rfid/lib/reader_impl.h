@@ -41,6 +41,7 @@ namespace gr {
       void gen_ack_bits(const float * in);
 
       int timestamp;
+      std::ofstream log;
 
     public:
       void print_results();

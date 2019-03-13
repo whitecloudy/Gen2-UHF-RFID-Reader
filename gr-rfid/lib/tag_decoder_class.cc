@@ -21,6 +21,8 @@ namespace gr
       _center.clear();
       _cluster.clear();
       _n_tag = 0;
+
+      _flip = NULL;
     }
 
     tag_decoder_impl::sample_information::sample_information(gr_complex* __in, int __total_size, int n_samples_TAG_BIT, int mode)
@@ -42,11 +44,18 @@ namespace gr
       _center.clear();
       _cluster.clear();
       _n_tag = 0;
+
+      _flip = NULL;
     }
 
     tag_decoder_impl::sample_information::~sample_information()
     {
-
+      if(_n_tag > 1)
+      {
+        for(int i=0 ; i<_n_tag ; i++)
+          delete _flip[i];
+        delete _flip;
+      }
     }
 
     void tag_decoder_impl::sample_information::cut_noise_sample(int data_len, int n_samples_TAG_BIT)
@@ -140,9 +149,35 @@ namespace gr
       _n_tag++;
     }
 
+    void tag_decoder_impl::sample_information::allocate_flip(void)
+    {
+      _flip = new int*[_center.size()];
+    }
+
+    void tag_decoder_impl::sample_information::allocate_flip(int index)
+    {
+      _flip[index] = new int[_center.size()];
+    }
+
+    void tag_decoder_impl::sample_information::set_flip(int index1, int index2, int __flip)
+    {
+      _flip[index1][index2] = __flip;
+    }
+
+    void tag_decoder_impl::sample_information::increase_flip(int index1, int index2)
+    {
+      _flip[index1][index2]++;
+      _flip[index2][index1]++;
+    }
+
     gr_complex tag_decoder_impl::sample_information::in(int index)
     {
       return _in[index];
+    }
+
+    int tag_decoder_impl::sample_information::total_size(void)
+    {
+      return _total_size;
     }
 
     float tag_decoder_impl::sample_information::norm_in(int index)
@@ -188,6 +223,11 @@ namespace gr
     int tag_decoder_impl::sample_information::n_tag(void)
     {
       return _n_tag;
+    }
+
+    int tag_decoder_impl::sample_information::flip(int index1, int index2)
+    {
+      return _flip[index1][index2];
     }
   } /* namespace rfid */
 } /* namespace gr */

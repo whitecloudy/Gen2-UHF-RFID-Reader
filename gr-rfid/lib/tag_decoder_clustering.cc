@@ -149,7 +149,7 @@ namespace gr
       for(int k=0 ; k<ys->center_size() ; k++)
       {
         float pcluster = pd_i_k(ys, i, k) * pt_i_k(ys, i, k);
-        if(pcluster > max_pcluster)
+        if(pcluster >= max_pcluster)
         {
           max_pcluster = pcluster;
           max_id = k;
