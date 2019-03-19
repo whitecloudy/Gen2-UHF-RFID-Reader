@@ -1,3 +1,4 @@
+/* -*- c++ -*- */
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -22,7 +23,8 @@ namespace gr
       _cluster.clear();
       _n_tag = 0;
 
-      _flip = NULL;
+      _flip.clear();
+      _OFG_node.clear();
     }
 
     tag_decoder_impl::sample_information::sample_information(gr_complex* __in, int __total_size, int n_samples_TAG_BIT, int mode)
@@ -45,18 +47,11 @@ namespace gr
       _cluster.clear();
       _n_tag = 0;
 
-      _flip = NULL;
+      _flip.clear();
+      _OFG_node.clear();
     }
 
-    tag_decoder_impl::sample_information::~sample_information()
-    {
-      if(_n_tag > 1)
-      {
-        for(int i=0 ; i<_n_tag ; i++)
-          delete _flip[i];
-        delete _flip;
-      }
-    }
+    tag_decoder_impl::sample_information::~sample_information(){}
 
     void tag_decoder_impl::sample_information::cut_noise_sample(int data_len, int n_samples_TAG_BIT)
     {
@@ -149,25 +144,41 @@ namespace gr
       _n_tag++;
     }
 
-    void tag_decoder_impl::sample_information::allocate_flip(void)
+    void tag_decoder_impl::sample_information::initialize_flip(void)
     {
-      _flip = new int*[_center.size()];
-    }
-
-    void tag_decoder_impl::sample_information::allocate_flip(int index)
-    {
-      _flip[index] = new int[_center.size()];
-    }
-
-    void tag_decoder_impl::sample_information::set_flip(int index1, int index2, int __flip)
-    {
-      _flip[index1][index2] = __flip;
+      std::vector<int> vec(_center.size());
+      for(int i=0 ; i<_center.size() ; i++)
+      {
+        _flip.push_back(vec);
+        for(int j=0 ; j<_center.size() ; j++)
+          _flip[i][j] = 0;
+      }
     }
 
     void tag_decoder_impl::sample_information::increase_flip(int index1, int index2)
     {
       _flip[index1][index2]++;
       _flip[index2][index1]++;
+    }
+
+    void tag_decoder_impl::sample_information::initialize_OFG(void)
+    {
+      _OFG_node.resize(_center.size());
+    }
+
+    bool tag_decoder_impl::sample_information::is_exist_OFG_link(int index, int target)
+    {
+      for(int i=0 ; i<_OFG_node[index].link.size() ; i++)
+      {
+        if(target == _OFG_node[index].link[i]) return true;
+      }
+      return false;
+    }
+
+    void tag_decoder_impl::sample_information::push_back_OFG_link(int index1, int index2)
+    {
+      _OFG_node[index1].link.push_back(index2);
+      _OFG_node[index2].link.push_back(index1);
     }
 
     gr_complex tag_decoder_impl::sample_information::in(int index)
@@ -228,6 +239,16 @@ namespace gr
     int tag_decoder_impl::sample_information::flip(int index1, int index2)
     {
       return _flip[index1][index2];
+    }
+
+    int tag_decoder_impl::sample_information::OFG_link(int index1, int index2)
+    {
+      return _OFG_node[index1].link[index2];
+    }
+
+    int tag_decoder_impl::sample_information::OFG_link_size(int index)
+    {
+      return _OFG_node[index].link.size();
     }
   } /* namespace rfid */
 } /* namespace gr */

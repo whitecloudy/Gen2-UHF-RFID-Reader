@@ -48,6 +48,14 @@ namespace gr
         FILE *preamble_fp;
         int success_count;
 
+        struct OFG_node
+        {
+          int id;
+          int layer;
+          std::vector<int> state;
+          std::vector<int> link;
+        };
+
         class sample_information
         {
           private:
@@ -63,7 +71,8 @@ namespace gr
             std::vector<int> _cluster;
             int _n_tag;
 
-            int** _flip;
+            std::vector<std::vector<int>> _flip;
+            std::vector<OFG_node> _OFG_node;
 
           public:
             sample_information();
@@ -81,10 +90,11 @@ namespace gr
             void set_n_tag(int);
             void increase_n_tag(void);
 
-            void allocate_flip(void);
-            void allocate_flip(int);
-            void set_flip(int, int, int);
+            void initialize_flip(void);
             void increase_flip(int, int);
+            void initialize_OFG(void);
+            bool is_exist_OFG_link(int, int);
+            void push_back_OFG_link(int, int);
 
             gr_complex in(int);
             int total_size(void);
@@ -100,6 +110,8 @@ namespace gr
             int n_tag(void);
 
             int flip(int, int);
+            int OFG_link(int, int);
+            int OFG_link_size(int);
         };
 
         //tag_decoder_impl.cc
@@ -136,24 +148,16 @@ namespace gr
 
         // tag_decoder_OFG.cc
         void count_flip(sample_information* ys);
+        void construct_OFG(sample_information* ys);
 
         #ifdef DEBUG_MESSAGE_CLUSTER
         void print_cluster_sample(sample_information* ys);
         #endif
 
         // tag_decoder_OFG.cc
-        typedef struct _OFG_node
-        {
-          int id;
-          int layer;
-          int* state;
-          std::vector<int> link;
-        } OFG_node;
-
-        int check_odd_cycle_OFG(OFG_node* OFG, int start, int compare, int check, std::vector<int> stack);
-        void construct_OFG(OFG_node* OFG, int** flip_info, int size, int n_tag);
-        void determine_OFG_state(OFG_node* OFG, int size, int n_tag);
-        void extract_parallel_samplesss(std::vector<int>* extracted_sample, const std::vector<int> clustered_idx, const OFG_node* OFG, int n_tag);
+        //int check_odd_cycle_OFG(OFG_node* OFG, int start, int compare, int check, std::vector<int> stack);
+        //void determine_OFG_state(OFG_node* OFG, int size, int n_tag);
+        //void extract_parallel_samplesss(std::vector<int>* extracted_sample, const std::vector<int> clustered_idx, const OFG_node* OFG, int n_tag);
 
         // debug_message
         std::ofstream log;

@@ -1,3 +1,4 @@
+/* -*- c++ -*- */
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -10,13 +11,7 @@ namespace gr
   {
     void tag_decoder_impl::count_flip(sample_information* ys)
     {
-      ys->allocate_flip();
-      for(int i=0 ; i<ys->center_size() ; i++)
-      {
-        ys->allocate_flip(i);
-        for(int j=0 ; j<ys->center_size() ; j++)
-          ys->set_flip(i, j, 0);
-      }
+      ys->initialize_flip();
 
       for(int i=0 ; i<ys->size()-1 ; i++)
       {
@@ -32,10 +27,10 @@ namespace gr
           debug_OFG << ys->flip(i, j) << " ";
         debug_OFG << std::endl;
       }
-      debug_OFG << std::endl << std::endl << std::endl << std::endl;
+      debug_OFG << std::endl << std::endl;
       #endif
     }
-
+/*
     int tag_decoder_impl::check_odd_cycle_OFG(OFG_node* OFG, int start, int compare, int check, std::vector<int> stack)
     {
       if(start == compare)
@@ -59,144 +54,124 @@ namespace gr
 
       return 0;
     }
-
-    void tag_decoder_impl::construct_OFG(OFG_node* OFG, int** flip_info, int size, int n_tag)
+*/
+    void tag_decoder_impl::construct_OFG(sample_information* ys)
     {
-      std::ofstream flipf("flip", std::ios::app);
-
-      int** flip = new int*[size];
-      for(int i=0 ; i<size ; i++)
+      struct Compound
       {
-        flip[i] = new int[size];
+        int id;
+        float value;
+      };
 
-        for(int j=0 ; j<size ; j++)
-          flip[i][j] = flip_info[i][j] + flip_info[j][i];
-      }
-
-      for(int i=0 ; i<size ; i++)
+      std::vector<std::vector<Compound>> p_trans(ys->center_size(), std::vector<Compound>(ys->center_size()));
+      for(int i=0 ; i<ys->center_size() ; i++)
       {
-        for(int j=0 ; j<size ; j++)
-          flipf << flip[i][j] << " ";
-        flipf << std::endl;
-      }
-      flipf << std::endl;
-
-      float* conf = new float[size];
-
-      int** link_id = new int*[size];
-      for(int i=0 ; i<size ; i++)
-      {
-        link_id[i] = new int[size];
-
-        for(int j=0 ; j<size ; j++)
+        for(int j=0 ; j<ys->center_size() ; j++)
         {
-          link_id[i][j] = j;
+          p_trans[i][j].id = j;
+          p_trans[i][j].value = ys->flip(i, j);
         }
+      }
 
-        for(int j=0 ; j<size-1 ; j++)
+      // sort by decreasing order for each row
+      for(int i=0 ; i<ys->center_size() ; i++)
+      {
+        // selection sort
+        for(int j=0 ; j<ys->center_size()-1 ; j++)
         {
-          for(int k=j+1 ; k<size ; k++)
+          for(int k=j+1 ; k<ys->center_size() ; k++)
           {
-            if(flip[i][j] < flip[i][k])
+            if(p_trans[i][j].value < p_trans[i][k].value)
             {
-              int temp = flip[i][j];
-              flip[i][j] = flip[i][k];
-              flip[i][k] = temp;
-
-              temp = link_id[i][j];
-              link_id[i][j] = link_id[i][k];
-              link_id[i][k] = temp;
+              Compound temp = p_trans[i][j];
+              p_trans[i][j] = p_trans[i][k];
+              p_trans[i][k] = temp;
             }
           }
         }
-
-        if(flip[i][n_tag] == 0) conf[i] = 1;
-        else conf[i] = flip[i][n_tag-1] / flip[i][n_tag];
       }
 
-      for(int i=0 ; i<size ; i++)
+      #ifdef DEBUG_MESSAGE_OFG
+      debug_OFG << "\t\t\t\t\t** p_trans **" << std::endl;
+      for(int i=0 ; i<ys->center_size() ; i++)
       {
-        for(int j=0 ; j<size ; j++)
-          flipf << flip[i][j] << " ";
-        flipf << std::endl;
+        debug_OFG << i << ":\t";
+        for(int j=0 ; j<ys->center_size() ; j++)
+          debug_OFG << p_trans[i][j].id << ":" << p_trans[i][j].value << "\t";
+        debug_OFG << std::endl;
       }
-      flipf << std::endl;
+      debug_OFG << std::endl << std::endl;
+      #endif
 
-      for(int i=0 ; i<size ; i++)
+      for(int i=0 ; i<ys->center_size() ; i++)
       {
-        for(int j=0 ; j<size ; j++)
-          flipf << link_id[i][j] << " ";
-        flipf << std::endl;
+        // set last column as sum of all flip
+        for(int j=0 ; j<ys->center_size()-1 ; j++)
+          p_trans[i][ys->center_size()-1].value += p_trans[i][j].value;
+
+        // calculate ratio
+        for(int j=0 ; j<ys->center_size()-1 ; j++)
+          p_trans[i][j].value /= p_trans[i][ys->center_size()-1].value;
       }
-      flipf << std::endl;
 
-      int* conf_id = new int[size];
-      for(int i=0 ; i<size ; i++)
-        conf_id[i] = i;
+      std::vector<Compound> conf(ys->center_size());
 
-      for(int i=0 ; i<size-1 ; i++)
+      for(int i=0 ; i<ys->center_size() ; i++)
       {
-        for(int j=i+1 ; j<size ; j++)
+        conf[i].id = i;
+        if(p_trans[i][ys->n_tag()].value == 0) conf[i].value = 0;
+        else conf[i].value = p_trans[i][ys->n_tag()-1].value / p_trans[i][ys->n_tag()].value;
+      }
+
+      // sort by decreasing order for each row
+      for(int i=0 ; i<ys->center_size()-1 ; i++)
+      {
+        for(int j=i+1 ; j<ys->center_size() ; j++)
         {
-          if(conf[i] < conf[j])
+          if(conf[i].value < conf[j].value)
           {
-            float temp = conf[i];
+            Compound temp = conf[i];
             conf[i] = conf[j];
             conf[j] = temp;
-
-            int temp_id = conf_id[i];
-            conf_id[i] = conf_id[j];
-            conf_id[j] = temp_id;
           }
         }
       }
 
-      for(int i=0 ; i<size ; i++)
+      #ifdef DEBUG_MESSAGE_OFG
+      debug_OFG << "\t\t\t\t\t** conf **" << std::endl;
+      for(int i=0 ; i<ys->center_size() ; i++)
       {
-        for(int j=0 ; OFG[conf_id[i]].link.size()<n_tag ; j++)
+        debug_OFG << conf[i].id << ":" << conf[i].value << "\t";
+      }
+      debug_OFG << std::endl << std::endl << std::endl;
+      #endif
+
+      ys->initialize_OFG();
+      for(int i=0 ; i<ys->center_size() ; i++)
+      {
+        int base = conf[i].id;
+
+        for(int j=0 ; ys->OFG_link_size(base)<ys->n_tag() ; j++)
         {
-          int candidate_id = link_id[conf_id[i]][j];
-          int k;
-
-          for(k=0 ; k<OFG[conf_id[i]].link.size() ; k++)
-          {
-            if(candidate_id == OFG[conf_id[i]].link[k]) break;
-          }
-
-          if(k == OFG[conf_id[i]].link.size())
-          {
-            OFG[conf_id[i]].link.push_back(candidate_id);
-            for(int x=0 ; x<OFG[conf_id[i]].link.size() ; x++)
-            {
-              std::vector<int> stack;
-              if(check_odd_cycle_OFG(OFG, conf_id[i], OFG[conf_id[i]].link[x], -1, stack) == -1)
-                OFG[conf_id[i]].link.pop_back();
-            }
-          }
+          int target = p_trans[base][j].id;
+          if(ys->is_exist_OFG_link(base, target)) continue;
+          ys->push_back_OFG_link(base, target);
         }
       }
 
-      flipf<<std::endl<<std::endl;
-      for(int i=0 ; i<size ; i++)
+      #ifdef DEBUG_MESSAGE_OFG
+      debug_OFG << "\t\t\t\t\t** OFG_link **" << std::endl;
+      for(int i=0 ; i<ys->center_size() ; i++)
       {
-        for(int j=0 ; j<n_tag ; j++)
-          flipf << OFG[i].link[j] << " ";
-        flipf << std::endl;
+        debug_OFG << i << ":\t";
+        for(int j=0 ; j<ys->OFG_link_size(i) ; j++)
+          debug_OFG << ys->OFG_link(i, j) << " ";
+        debug_OFG << std::endl;
       }
-
-      flipf.close();
-
-      for(int i=0 ; i<size ; i++)
-      {
-        delete flip[i];
-        delete link_id[i];
-      }
-
-      delete flip;
-      delete conf;
-      delete link_id;
+      debug_OFG << std::endl << std::endl;
+      #endif
     }
-
+/*
     void tag_decoder_impl::determine_OFG_state(OFG_node* OFG, int size, int n_tag)
     {
       OFG[0].layer = 0;
@@ -267,6 +242,6 @@ namespace gr
         flipf << std::endl << std::endl;
       }
       flipf.close();
-    }
+    }*/
   } /* namespace rfid */
 } /* namespace gr */
