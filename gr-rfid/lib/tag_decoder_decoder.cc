@@ -1,7 +1,7 @@
+/* -*- c++ -*- */
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
-
 
 #include "tag_decoder_impl.h"
 
@@ -11,8 +11,7 @@ namespace gr
 {
   namespace rfid
   {
-
-    int tag_decoder_impl::tag_sync(float* norm_in, int size)
+/*    int tag_decoder_impl::tag_sync(float* norm_in, int size)
     // This method searches the preamble and returns the start index of the tag data.
     // If the correlation value exceeds the threshold, it returns the start index of the tag data.
     // Else, it returns -1.
@@ -226,6 +225,6 @@ namespace gr
 
       return decoded_bits;
     }
-
+*/
   } /* namespace rfid */
 } /* namespace gr */

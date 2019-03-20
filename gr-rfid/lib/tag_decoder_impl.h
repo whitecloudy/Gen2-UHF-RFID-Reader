@@ -133,10 +133,10 @@ namespace gr
         #endif
 
         // tag_decoder_decoder.cc
-        int tag_sync(std::vector<float> in, int size);
-        int determine_first_mask_level(std::vector<float> in, int index);
-        int decode_single_bit(std::vector<float> in, int index, int mask_level, float* ret_corr);
-        std::vector<float> tag_detection(std::vector<float> in, int index, int n_expected_bit);
+        //int tag_sync(std::vector<float> in, int size);
+        //int determine_first_mask_level(std::vector<float> in, int index);
+        //int decode_single_bit(std::vector<float> in, int index, int mask_level, float* ret_corr);
+        //std::vector<float> tag_detection(std::vector<float> in, int index, int n_expected_bit);
 
         // tag_decoder_clustering.cc
         double IQ_distance(const gr_complex p1, const gr_complex p2);
