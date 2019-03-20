@@ -70,7 +70,7 @@ namespace gr
 
         if(n_tag == 1)
         {
-
+          
         }
         else if(n_tag > 1)
         {
@@ -99,20 +99,6 @@ namespace gr
       return WORK_CALLED_PRODUCE;
     }
 
-    void tag_decoder_impl::print_sample(sample_information* ys)
-    {
-      debug_sample << "\t\t\t\t\t** I **" << std::endl;
-      for(int i=0 ; i<ys->total_size() ; i++)
-        debug_sample << ys->in(i).real() << " ";
-      debug_sample << std::endl;
-      debug_sample << "\t\t\t\t\t** Q **" << std::endl;
-      for(int i=0 ; i<ys->total_size() ; i++)
-        debug_sample << ys->in(i).imag() << " ";
-      debug_sample << std::endl;
-      debug_sample << "\t\t\t\t\t** norm **" << std::endl;
-      for(int i=0 ; i<ys->total_size() ; i++)
-        debug_sample << ys->norm_in(i) << " ";
-    }
 
 /*      // Processing only after n_samples_to_ungate are available and we need to decode an RN16
       if(reader_state->decoder_status == DECODER_DECODE_RN16 && ninput_items[0] >= reader_state->n_samples_to_ungate)
@@ -464,13 +450,18 @@ namespace gr
       return ys->n_tag();
     }
 
-    void tag_decoder_impl::extract_parallel_sample(sample_information* ys)
+    bool tag_decoder_impl::extract_parallel_sample(sample_information* ys)
     {
       count_flip(ys);
-      if(construct_OFG(ys))
-      {
-        determine_OFG_state(ys);
-      }
+      if(!construct_OFG(ys)) return false;
+      determine_OFG_state(ys);
+      ys->set_binary_sample();
+
+      #ifdef DEBUG_MESSAGE_OFG
+      print_binary_sample(ys);
+      #endif
+
+      return true;
     }
 
     /* Function adapted from https://www.cgran.org/wiki/Gen2 */
@@ -519,5 +510,22 @@ namespace gr
       else
       return 1;
     }
+
+    #ifdef DEBUG_MESSAGE_SAMPLE
+    void tag_decoder_impl::print_sample(sample_information* ys)
+    {
+      debug_sample << "\t\t\t\t\t** I **" << std::endl;
+      for(int i=0 ; i<ys->total_size() ; i++)
+        debug_sample << ys->in(i).real() << " ";
+      debug_sample << std::endl;
+      debug_sample << "\t\t\t\t\t** Q **" << std::endl;
+      for(int i=0 ; i<ys->total_size() ; i++)
+        debug_sample << ys->in(i).imag() << " ";
+      debug_sample << std::endl;
+      debug_sample << "\t\t\t\t\t** norm **" << std::endl;
+      for(int i=0 ; i<ys->total_size() ; i++)
+        debug_sample << ys->norm_in(i) << " ";
+    }
+    #endif
   } /* namespace rfid */
 } /* namespace gr */

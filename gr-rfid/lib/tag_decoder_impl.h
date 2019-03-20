@@ -73,6 +73,7 @@ namespace gr
 
             std::vector<std::vector<int>> _flip;
             std::vector<OFG_node> _OFG_node;
+            std::vector<std::vector<int>> _binary_sample;
 
           public:
             sample_information();
@@ -98,6 +99,7 @@ namespace gr
             bool check_odd_cycle_OFG(int, int);
             void set_OFG_layer(int, int);
             void set_OFG_state(int, int, int);
+            void set_binary_sample(void);
 
             gr_complex in(int);
             int total_size(void);
@@ -117,14 +119,18 @@ namespace gr
             int OFG_state(int, int);
             int OFG_link(int, int);
             int OFG_link_size(int);
+            int binary_sample(int, int);
         };
 
         //tag_decoder_impl.cc
-        void print_sample(sample_information* ys);
         int clustering_sample(sample_information* ys, int mode);
-        void extract_parallel_sample(sample_information* ys);
+        bool extract_parallel_sample(sample_information* ys);
 
         int check_crc(char * bits, int num_bits);
+
+        #ifdef DEBUG_MESSAGE_SAMPLE
+        void print_sample(sample_information* ys);
+        #endif
 
         // tag_decoder_decoder.cc
         int tag_sync(std::vector<float> in, int size);
@@ -151,17 +157,18 @@ namespace gr
 
         void calc_n_tag(sample_information* ys);
 
-        // tag_decoder_OFG.cc
-        void count_flip(sample_information* ys);
-        bool construct_OFG(sample_information* ys);
-        void determine_OFG_state(sample_information* ys);
-
         #ifdef DEBUG_MESSAGE_CLUSTER
         void print_cluster_sample(sample_information* ys);
         #endif
 
         // tag_decoder_OFG.cc
-        //void extract_parallel_samplesss(std::vector<int>* extracted_sample, const std::vector<int> clustered_idx, const OFG_node* OFG, int n_tag);
+        void count_flip(sample_information* ys);
+        bool construct_OFG(sample_information* ys);
+        void determine_OFG_state(sample_information* ys);
+
+        #ifdef DEBUG_MESSAGE_OFG
+        void print_binary_sample(sample_information* ys);
+        #endif
 
         // debug_message
         std::ofstream log;

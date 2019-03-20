@@ -25,6 +25,7 @@ namespace gr
 
       _flip.clear();
       _OFG_node.clear();
+      _binary_sample.clear();
     }
 
     tag_decoder_impl::sample_information::sample_information(gr_complex* __in, int __total_size, int n_samples_TAG_BIT, int mode)
@@ -49,6 +50,7 @@ namespace gr
 
       _flip.clear();
       _OFG_node.clear();
+      _binary_sample.clear();
     }
 
     tag_decoder_impl::sample_information::~sample_information(){}
@@ -205,6 +207,17 @@ namespace gr
       _OFG_node[index1].state[index2] = __state;
     }
 
+    void tag_decoder_impl::sample_information::set_binary_sample(void)
+    {
+      for(int i=0 ; i<_n_tag ; i++)
+      {
+        std::vector<int> vec;
+        for(int j=0 ; j<_size ; j++)
+          vec.push_back(_OFG_node[_cluster[j]].state[i]);
+        _binary_sample.push_back(vec);
+      }
+    }
+
     gr_complex tag_decoder_impl::sample_information::in(int index)
     {
       return _in[index];
@@ -283,6 +296,11 @@ namespace gr
     int tag_decoder_impl::sample_information::OFG_link_size(int index)
     {
       return _OFG_node[index].link.size();
+    }
+
+    int tag_decoder_impl::sample_information::binary_sample(int index1, int index2)
+    {
+      return _binary_sample[index1][index2];
     }
   } /* namespace rfid */
 } /* namespace gr */

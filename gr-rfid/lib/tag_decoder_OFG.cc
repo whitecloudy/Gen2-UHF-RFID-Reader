@@ -169,6 +169,9 @@ namespace gr
     {
       ys->set_OFG_layer(0, 0);
 
+      for(int i=1 ; i<ys->center_size() ; i++)
+        ys->set_OFG_layer(i, ys->center_size());
+
       for(int i=0 ; i<ys->n_tag() ; i++)
       {
         ys->set_OFG_layer(ys->OFG_link(0, i), 1);
@@ -211,24 +214,21 @@ namespace gr
       debug_OFG << std::endl << std::endl << std::endl;
       #endif
     }
-/*
-    void tag_decoder_impl::extract_parallel_samplesss(std::vector<int>* extracted_sample, const std::vector<int> clustered_idx, const OFG_node* OFG, int n_tag)
-    {
-      for(int i=0 ; i<clustered_idx.size() ; i++)
-      {
-        for(int j=0 ; j<n_tag ; j++)
-          extracted_sample[j].push_back(OFG[clustered_idx[i]].state[j]);
-      }
 
-      std::ofstream flipf("flip", std::ios::app);
-      for(int i=0 ; i<n_tag ; i++)
+    #ifdef DEBUG_MESSAGE_OFG
+    void tag_decoder_impl::print_binary_sample(sample_information* ys)
+    {
+      for(int i=0 ; i<ys->n_tag() ; i++)
       {
-        flipf << "\t*** tag " << i << " ***" << std::endl;
-        for(int j=0 ; j<clustered_idx.size() ; j++)
-          flipf << extracted_sample[i][j] << " ";
-        flipf << std::endl << std::endl;
+        debug_OFG << "\t\t\t\t\t** tag " << i << " **" << std::endl;
+        for(int j=0 ; j<ys->size() ; j++)
+        {
+          debug_OFG << ys->binary_sample(i, j) << " ";
+        }
+        debug_OFG << std::endl << std::endl;
       }
-      flipf.close();
-    }*/
+      debug_OFG << std::endl << std::endl << std::endl;
+    }
+    #endif
   } /* namespace rfid */
 } /* namespace gr */
