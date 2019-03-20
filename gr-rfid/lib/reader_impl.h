@@ -44,6 +44,7 @@ namespace gr {
       std::ofstream log;
 
     public:
+      int calc_usec(const struct timeval start, const struct timeval end);
       void print_results();
       reader_impl(int sample_rate, int dac_rate);
       ~reader_impl();

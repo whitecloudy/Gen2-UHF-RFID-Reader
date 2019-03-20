@@ -28,8 +28,10 @@ namespace gr
     tag_decoder_impl::tag_decoder_impl(int sample_rate, std::vector<int> output_sizes)
     : gr::block("tag_decoder", gr::io_signature::make(1, 1, sizeof(gr_complex)), gr::io_signature::makev(2, 2, output_sizes)), s_rate(sample_rate)
     {
-      char_bits = new char[128];
-      n_samples_TAG_BIT = TAG_BIT_D * s_rate / pow(10, 6);
+      char_bits = (char *) malloc( sizeof(char) * 128);
+
+      n_samples_TAG_BIT = TPRI_D * s_rate / pow(10,6);
+      //GR_LOG_INFO(d_logger, "Number of samples of Tag bit : "<< n_samples_TAG_BIT);
     }
 
     tag_decoder_impl::~tag_decoder_impl()
@@ -41,6 +43,7 @@ namespace gr
     {
       ninput_items_required[0] = noutput_items;
     }
+
 
     int tag_decoder_impl::general_work (int noutput_items, gr_vector_int& ninput_items, gr_vector_const_void_star& input_items, gr_vector_void_star& output_items)
     {
@@ -98,6 +101,7 @@ namespace gr
       consume_each(consumed);
       return WORK_CALLED_PRODUCE;
     }
+
 
 
 /*      // Processing only after n_samples_to_ungate are available and we need to decode an RN16
