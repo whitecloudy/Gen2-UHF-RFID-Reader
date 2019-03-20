@@ -214,6 +214,27 @@ namespace gr
       }
     }
 
+    void tag_decoder_impl::cut_tiny_center(sample_information* ys)
+    {
+      std::vector<int> candidate_id;
+      int threshold = ys->size() / 100;
+
+      for(int i=0 ; i<ys->center_size() ; i++)
+      {
+        if(ys->cluster_size(i) < threshold) candidate_id.push_back(i);
+      }
+
+      int erase_count = 0;
+      for(int i=0 ; i<candidate_id.size() ; i++)
+      {
+        ys->erase_center(candidate_id[i] - erase_count);
+        erase_count++;
+      }
+
+      ys->clear_cluster();
+      sample_clustering(ys);
+    }
+
     void tag_decoder_impl::sample_clustering_after_splitting(sample_information* ys, const int prev_center, const int new_center)
     {
       int idx = 0;

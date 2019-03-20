@@ -112,6 +112,7 @@ namespace gr
             int center(int);
             int center_size(void);
             int cluster(int);
+            int cluster_size(int);
             int n_tag(void);
 
             int flip(int, int);
@@ -147,6 +148,7 @@ namespace gr
         int max_id_pcluster_i(sample_information* ys, const int i);
         float max_value_pcluster_i(sample_information* ys, const int i);
         void sample_clustering(sample_information* ys);
+        void cut_tiny_center(sample_information* ys);
         void sample_clustering_after_splitting(sample_information* ys, const int prev_center, const int new_center);
 
         bool is_power_of_2(sample_information* ys);

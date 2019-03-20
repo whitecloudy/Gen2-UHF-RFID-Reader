@@ -268,6 +268,14 @@ namespace gr
       return _cluster[index];
     }
 
+    int tag_decoder_impl::sample_information::cluster_size(int index)
+    {
+      int count = 0;
+      for(int i=0 ; i<_size ; i++)
+        if(_cluster[i] == index) count++;
+      return count;
+    }
+
     int tag_decoder_impl::sample_information::n_tag(void)
     {
       return _n_tag;

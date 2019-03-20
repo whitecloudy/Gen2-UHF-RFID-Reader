@@ -433,6 +433,12 @@ namespace gr
       print_cluster_sample(ys);
       #endif
 
+      cut_tiny_center(ys);
+
+      #ifdef DEBUG_MESSAGE_CLUSTER
+      print_cluster_sample(ys);
+      #endif
+
       if(ys->center_size() == 1 || !is_power_of_2(ys))
       {
         clustering_error_detection(ys);
