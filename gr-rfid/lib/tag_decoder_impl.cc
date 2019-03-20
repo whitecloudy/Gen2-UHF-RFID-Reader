@@ -469,7 +469,7 @@ namespace gr
       count_flip(ys);
       if(construct_OFG(ys))
       {
-        
+        determine_OFG_state(ys);
       }
     }
 

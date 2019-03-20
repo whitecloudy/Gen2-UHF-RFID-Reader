@@ -96,6 +96,8 @@ namespace gr
             bool is_exist_OFG_link(int, int);
             void push_back_OFG_link(int, int);
             bool check_odd_cycle_OFG(int, int);
+            void set_OFG_layer(int, int);
+            void set_OFG_state(int, int, int);
 
             gr_complex in(int);
             int total_size(void);
@@ -111,6 +113,8 @@ namespace gr
             int n_tag(void);
 
             int flip(int, int);
+            int OFG_layer(int);
+            int OFG_state(int, int);
             int OFG_link(int, int);
             int OFG_link_size(int);
         };
@@ -150,13 +154,13 @@ namespace gr
         // tag_decoder_OFG.cc
         void count_flip(sample_information* ys);
         bool construct_OFG(sample_information* ys);
+        void determine_OFG_state(sample_information* ys);
 
         #ifdef DEBUG_MESSAGE_CLUSTER
         void print_cluster_sample(sample_information* ys);
         #endif
 
         // tag_decoder_OFG.cc
-        //void determine_OFG_state(OFG_node* OFG, int size, int n_tag);
         //void extract_parallel_samplesss(std::vector<int>* extracted_sample, const std::vector<int> clustered_idx, const OFG_node* OFG, int n_tag);
 
         // debug_message

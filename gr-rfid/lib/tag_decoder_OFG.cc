@@ -164,60 +164,54 @@ namespace gr
 
       return true;
     }
-/*
-    void tag_decoder_impl::determine_OFG_state(OFG_node* OFG, int size, int n_tag)
+
+    void tag_decoder_impl::determine_OFG_state(sample_information* ys)
     {
-      OFG[0].layer = 0;
+      ys->set_OFG_layer(0, 0);
 
-      for(int i=0 ; i<n_tag ; i++)
+      for(int i=0 ; i<ys->n_tag() ; i++)
       {
-        OFG[OFG[0].link[i]].layer = 1;
-        OFG[OFG[0].link[i]].state[i] = 1;
+        ys->set_OFG_layer(ys->OFG_link(0, i), 1);
+        ys->set_OFG_state(ys->OFG_link(0, i), i, 1);
       }
 
-      std::ofstream flipf("flip", std::ios::app);
-      for(int i=0 ; i<size ; i++)
+      for(int i=2 ; i<=ys->n_tag() ; i++) // layer
       {
-        flipf << "i=" << i;
-        for(int j=0 ; j<n_tag ; j++)
-          flipf << " " << OFG[i].state[j];
-        flipf << std::endl;
-      }
-      flipf<<std::endl<<std::endl;
-
-      for(int i=2 ; i<=n_tag ; i++)
-      {
-        for(int j=0 ; j<size ; j++)
+        for(int base=0 ; base<ys->center_size() ; base++)  // for all nodes
         {
-          if(OFG[j].layer == i-1)
+          if(ys->OFG_layer(base) == i-1) // if base node is parent node
           {
-            for(int k=0 ; k<n_tag ; k++)
+            for(int j=0 ; j<ys->n_tag() ; j++)
             {
-              if(OFG[OFG[j].link[k]].layer < i) continue;
-              OFG[OFG[j].link[k]].layer = i;
+              // set base node's jth link as target
+              int target = ys->OFG_link(base, j);
 
-              for(int x=0 ; x<n_tag ; x++)
-              {
-                if(OFG[j].state[x] == 1)
-                  OFG[OFG[j].link[k]].state[x] = 1;
-              }
+              // continue when target node's layer is less than base node
+              if(ys->OFG_layer(target) < i) continue;
+              // set target node's layer
+              ys->set_OFG_layer(target, i);
+
+              // set target node's state
+              for(int k=0 ; k<ys->n_tag() ; k++)
+                if(ys->OFG_state(base, k) == 1) ys->set_OFG_state(target, k, 1);
             }
           }
         }
-
-        for(int i=0 ; i<size ; i++)
-        {
-          flipf << "i=" << i;
-          for(int j=0 ; j<n_tag ; j++)
-            flipf << " " << OFG[i].state[j];
-          flipf << std::endl;
-        }
-        flipf<<std::endl<<std::endl;
       }
 
-      flipf.close();
+      #ifdef DEBUG_MESSAGE_OFG
+      debug_OFG << "\t\t\t\t\t** OFG_state **" << std::endl;
+      for(int i=0 ; i<ys->center_size() ; i++)
+      {
+        debug_OFG << i << ":\t";
+        for(int j=0 ; j<ys->n_tag() ; j++)
+          debug_OFG << ys->OFG_state(i, j);
+        debug_OFG << std::endl;
+      }
+      debug_OFG << std::endl << std::endl << std::endl;
+      #endif
     }
-
+/*
     void tag_decoder_impl::extract_parallel_samplesss(std::vector<int>* extracted_sample, const std::vector<int> clustered_idx, const OFG_node* OFG, int n_tag)
     {
       for(int i=0 ; i<clustered_idx.size() ; i++)

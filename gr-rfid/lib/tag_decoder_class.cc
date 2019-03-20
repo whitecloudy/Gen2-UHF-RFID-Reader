@@ -164,6 +164,8 @@ namespace gr
     void tag_decoder_impl::sample_information::initialize_OFG(void)
     {
       _OFG_node.resize(_center.size());
+      for(int i=0 ; i<_center.size() ; i++)
+        _OFG_node[i].state.resize(_n_tag);
     }
 
     bool tag_decoder_impl::sample_information::is_exist_OFG_link(int base, int target)
@@ -191,6 +193,16 @@ namespace gr
         }
       }
       return false;
+    }
+
+    void tag_decoder_impl::sample_information::set_OFG_layer(int index, int __layer)
+    {
+      _OFG_node[index].layer = __layer;
+    }
+
+    void tag_decoder_impl::sample_information::set_OFG_state(int index1, int index2, int __state)
+    {
+      _OFG_node[index1].state[index2] = __state;
     }
 
     gr_complex tag_decoder_impl::sample_information::in(int index)
@@ -251,6 +263,16 @@ namespace gr
     int tag_decoder_impl::sample_information::flip(int index1, int index2)
     {
       return _flip[index1][index2];
+    }
+
+    int tag_decoder_impl::sample_information::OFG_layer(int index)
+    {
+      return _OFG_node[index].layer;
+    }
+
+    int tag_decoder_impl::sample_information::OFG_state(int index1, int index2)
+    {
+      return _OFG_node[index1].state[index2];
     }
 
     int tag_decoder_impl::sample_information::OFG_link(int index1, int index2)
