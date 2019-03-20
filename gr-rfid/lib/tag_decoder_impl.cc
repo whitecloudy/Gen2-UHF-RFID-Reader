@@ -467,7 +467,10 @@ namespace gr
     void tag_decoder_impl::extract_parallel_sample(sample_information* ys)
     {
       count_flip(ys);
-      construct_OFG(ys);
+      if(construct_OFG(ys))
+      {
+        
+      }
     }
 
     /* Function adapted from https://www.cgran.org/wiki/Gen2 */

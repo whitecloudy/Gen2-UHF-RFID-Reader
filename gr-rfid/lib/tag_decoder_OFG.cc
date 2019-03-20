@@ -30,32 +30,8 @@ namespace gr
       debug_OFG << std::endl << std::endl;
       #endif
     }
-/*
-    int tag_decoder_impl::check_odd_cycle_OFG(OFG_node* OFG, int start, int compare, int check, std::vector<int> stack)
-    {
-      if(start == compare)
-      {
-        if(check == 1) return 1;
-        else return -1;
-      }
 
-      for(int i=0 ; i<stack.size() ; i++)
-      {
-        if(stack[i] == compare) return 0;
-      }
-
-      check *= -1;
-      stack.push_back(compare);
-
-      for(int i=0 ; i<OFG[compare].link.size() ; i++)
-      {
-        if(check_odd_cycle_OFG(OFG, start, OFG[compare].link[i], check, stack) == -1) return -1;
-      }
-
-      return 0;
-    }
-*/
-    void tag_decoder_impl::construct_OFG(sample_information* ys)
+    bool tag_decoder_impl::construct_OFG(sample_information* ys)
     {
       struct Compound
       {
@@ -76,10 +52,15 @@ namespace gr
       // sort by decreasing order for each row
       for(int i=0 ; i<ys->center_size() ; i++)
       {
+        // move self flip to the right
+        Compound temp = p_trans[i][i];
+        p_trans[i][i] = p_trans[i][ys->center_size()-1];
+        p_trans[i][ys->center_size()-1] = temp;
+
         // selection sort
-        for(int j=0 ; j<ys->center_size()-1 ; j++)
+        for(int j=0 ; j<ys->center_size()-2 ; j++)
         {
-          for(int k=j+1 ; k<ys->center_size() ; k++)
+          for(int k=j+1 ; k<ys->center_size()-1 ; k++)
           {
             if(p_trans[i][j].value < p_trans[i][k].value)
             {
@@ -153,8 +134,18 @@ namespace gr
 
         for(int j=0 ; ys->OFG_link_size(base)<ys->n_tag() ; j++)
         {
+          if(j == ys->center_size() - 1)  // construct error
+          {
+            #ifdef DEBUG_MESSAGE_OFG
+            debug_OFG << "\t\t\t\t\t** OFG_link error **";
+            #endif
+            return false;
+          }
+
           int target = p_trans[base][j].id;
           if(ys->is_exist_OFG_link(base, target)) continue;
+          if(ys->OFG_link_size(target) >= ys->n_tag()) continue;
+          if(ys->check_odd_cycle_OFG(base, target)) continue;
           ys->push_back_OFG_link(base, target);
         }
       }
@@ -170,6 +161,8 @@ namespace gr
       }
       debug_OFG << std::endl << std::endl;
       #endif
+
+      return true;
     }
 /*
     void tag_decoder_impl::determine_OFG_state(OFG_node* OFG, int size, int n_tag)

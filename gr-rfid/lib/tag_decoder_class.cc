@@ -166,11 +166,11 @@ namespace gr
       _OFG_node.resize(_center.size());
     }
 
-    bool tag_decoder_impl::sample_information::is_exist_OFG_link(int index, int target)
+    bool tag_decoder_impl::sample_information::is_exist_OFG_link(int base, int target)
     {
-      for(int i=0 ; i<_OFG_node[index].link.size() ; i++)
+      for(int i=0 ; i<_OFG_node[base].link.size() ; i++)
       {
-        if(target == _OFG_node[index].link[i]) return true;
+        if(target == _OFG_node[base].link[i]) return true;
       }
       return false;
     }
@@ -179,6 +179,18 @@ namespace gr
     {
       _OFG_node[index1].link.push_back(index2);
       _OFG_node[index2].link.push_back(index1);
+    }
+
+    bool tag_decoder_impl::sample_information::check_odd_cycle_OFG(int base, int target)
+    {
+      for(int i=0 ; i<_OFG_node[base].link.size() ; i++)
+      {
+        for(int j=0 ; j<_OFG_node[target].link.size() ; j++)
+        {
+          if(_OFG_node[base].link[i] == _OFG_node[target].link[j]) return true;
+        }
+      }
+      return false;
     }
 
     gr_complex tag_decoder_impl::sample_information::in(int index)
