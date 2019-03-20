@@ -1,35 +1,11 @@
-/* -*- c++ -*- */
-/*
-* Copyright 2015 <Nikos Kargas (nkargas@isc.tuc.gr)>.
-*
-* This is free software; you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation; either version 3, or (at your option)
-* any later version.
-*
-* This software is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with this software; see the file COPYING.  If not, write to
-* the Free Software Foundation, Inc., 51 Franklin Street,
-* Boston, MA 02110-1301, USA.
-*/
-
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
 
-#include <gnuradio/io_signature.h>
-#include <gnuradio/prefs.h>
-#include <gnuradio/math.h>
-#include <cmath>
-#include <sys/time.h>
+
 #include "tag_decoder_impl.h"
 
-#define SHIFT_SIZE 3  // used in tag_detection
+#define SHIFT_SIZE 3
 
 namespace gr
 {
@@ -135,7 +111,9 @@ namespace gr
     // index: start point of "data bit", do not decrease half bit!
     // mask_level: start level of "decoding bit". (-1)low level start, (1)high level start.
     {
+
       std::ofstream time("time/time", std::ios::app);
+
       const float masks[2][2][4] = { // first, last elements are extra bits. second, third elements are real signal.
         {{1, -1, 1, -1}, {1, -1, -1, 1}}, // low level start
         {{-1, 1, -1, 1}, {-1, 1, 1, -1}}  // high level start
@@ -179,6 +157,7 @@ namespace gr
           max_index = i;
         }
       }
+
       max_corr /= n_samples_TAG_BIT*2;
       (*ret_corr) = max_corr;
 
@@ -197,6 +176,7 @@ namespace gr
 
       int mask_level = determine_first_mask_level(norm_in, index);
       int shift = 0;
+
       float threshold = 0.8f;
 
       for(int i=0 ; i<n_expected_bit ; i++)
@@ -241,9 +221,11 @@ namespace gr
         if(max_index) mask_level *= -1; // change mask_level(start level of the next bit) when the decoded bit is 1
 
         decoded_bits.push_back(max_index);
+
       }
 
       return decoded_bits;
     }
-  }
-}
+
+  } /* namespace rfid */
+} /* namespace gr */
