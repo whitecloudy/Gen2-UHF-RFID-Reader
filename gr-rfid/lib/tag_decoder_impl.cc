@@ -64,6 +64,9 @@ namespace gr
         int n_tag = clustering_sample(&ys, mode);
         if(n_tag == 1)
         {
+          // detect preamble
+          int data_index = tag_sync(&ys);  //find where the tag data bits start
+          if(data_index == -1) goto_next_slot();
 
         }
         else if(n_tag > 1)
@@ -161,15 +164,6 @@ namespace gr
             log.close();
           }
 
-          for(int i=0 ; i<center.size() ; i++)
-            delete flip_info[i];
-          delete flip_info;
-
-          for(int i=0 ; i<center.size() ; i++)
-            delete OFG[i].state;
-          delete[] OFG;
-
-          delete[] extracted_sample;
         }
         else
         {
@@ -205,30 +199,8 @@ namespace gr
           else  // fail to detect preamble
           {
             log.open("debug_message", std::ios::app);
-            log << "│ Preamble detection fail.." << std::endl;
-            std::cout << "\t\t\t\t\tPreamble FAIL!!";
 
-            reader_state->reader_stats.cur_slot_number++;
-            if(reader_state->reader_stats.cur_slot_number > reader_state->reader_stats.max_slot_number)
-            {
-              reader_state->reader_stats.cur_inventory_round ++;
-              reader_state->reader_stats.cur_slot_number = 1;
 
-              log << "└──────────────────────────────────────────────────" << std::endl;
-              if(reader_state->reader_stats.cur_inventory_round > MAX_NUM_QUERIES)
-              {
-                reader_state->reader_stats.cur_inventory_round--;
-                reader_state-> status = TERMINATED;
-                reader_state->decoder_status = DECODER_TERMINATED;
-              }
-              else
-                reader_state->gen2_logic_status = SEND_QUERY;
-            }
-            else
-            {
-              log << "├──────────────────────────────────────────────────" << std::endl;
-              reader_state->gen2_logic_status = SEND_QUERY_REP;
-            }
             log.close();
           }
         }*/
@@ -239,53 +211,9 @@ namespace gr
       // Processing only after n_samples_to_ungate are available and we need to decode an EPC
       /*else if (reader_state->decoder_status == DECODER_DECODE_EPC && ninput_items[0] >= reader_state->n_samples_to_ungate )
       {
-        #ifdef DEBUG_MESSAGE
-        {
-          debug.open((debug_message+std::to_string(reader_state->reader_stats.cur_inventory_round)+"_"+std::to_string(reader_state->reader_stats.cur_slot_number)).c_str(), std::ios::app);
-          debug << "n_samples_to_ungate= " << reader_state->n_samples_to_ungate << ", ninput_items[0]= " << ninput_items[0] << std::endl;
-          debug << "\t\t\t\t\t** samples from gate **" << std::endl;
-          for(int i=0 ; i<ninput_items[0] ; i++)
-            debug << norm_in[i] << " ";
-          debug << std::endl << "\t\t\t\t\t** samples from gate **" << std::endl << std::endl << std::endl << std::endl;
-          debug.close();
-
-          debug.open((debug_message+std::to_string(reader_state->reader_stats.cur_inventory_round)+"_"+std::to_string(reader_state->reader_stats.cur_slot_number)+"_iq").c_str(), std::ios::app);
-          debug << "n_samples_to_ungate= " << reader_state->n_samples_to_ungate << ", ninput_items[0]= " << ninput_items[0] << std::endl;
-          debug << "\t\t\t\t\t** samples from gate (I) **" << std::endl;
-          for(int i=0 ; i<ninput_items[0] ; i++)
-            debug << in[i].real() << " ";
-          debug << std::endl << "\t\t\t\t\t** samples from gate **" << std::endl << std::endl << std::endl << std::endl;
-          debug << "\t\t\t\t\t** samples from gate (Q) **" << std::endl;
-          for(int i=0 ; i<ninput_items[0] ; i++)
-            debug << in[i].imag() << " ";
-          debug << std::endl << "\t\t\t\t\t** samples from gate **" << std::endl << std::endl << std::endl << std::endl;
-          debug.close();
-        }
-        #endif
 
         // detect preamble
         int EPC_index = tag_sync(norm_in, ninput_items[0]);
-        #ifdef DEBUG_MESSAGE
-        {
-          debug.open((debug_message+std::to_string(reader_state->reader_stats.cur_inventory_round)+"_"+std::to_string(reader_state->reader_stats.cur_slot_number)).c_str(), std::ios::app);
-          debug << "\t\t\t\t\t** EPC samples **" << std::endl;
-          for(int i=0 ; i<n_samples_TAG_BIT*(EPC_BITS-1) ; i++)
-            debug << norm_in[EPC_index+i] << " ";
-          debug << std::endl << "\t\t\t\t\t** EPC samples **" << std::endl << std::endl << std::endl << std::endl;
-          debug.close();
-
-          debug.open((debug_message+std::to_string(reader_state->reader_stats.cur_inventory_round)+"_"+std::to_string(reader_state->reader_stats.cur_slot_number)+"_iq").c_str(), std::ios::app);
-          debug << "\t\t\t\t\t** EPC samples (I) **" << std::endl;
-          for(int i=0 ; i<n_samples_TAG_BIT*(EPC_BITS-1) ; i++)
-            debug << in[EPC_index+i].real() << " ";
-          debug << std::endl << "\t\t\t\t\t** EPC samples **" << std::endl << std::endl << std::endl << std::endl;
-          debug << "\t\t\t\t\t** EPC samples (Q) **" << std::endl;
-          for(int i=0 ; i<n_samples_TAG_BIT*(EPC_BITS-1) ; i++)
-            debug << in[EPC_index+i].imag() << " ";
-          debug << std::endl << "\t\t\t\t\t** EPC samples **" << std::endl << std::endl << std::endl << std::endl;
-          debug.close();
-        }
-        #endif
 
         // process for GNU RADIO
         int written_sync = 0;
@@ -423,6 +351,30 @@ namespace gr
       #endif
 
       return true;
+    }
+
+    void tag_decoder_impl::goto_next_slot(void)
+    {
+      reader_state->reader_stats.cur_slot_number++;
+      if(reader_state->reader_stats.cur_slot_number > reader_state->reader_stats.max_slot_number)
+      {
+        reader_state->reader_stats.cur_inventory_round ++;
+        reader_state->reader_stats.cur_slot_number = 1;
+
+        log << "└──────────────────────────────────────────────────" << std::endl;
+        if(reader_state->reader_stats.cur_inventory_round > MAX_NUM_QUERIES)
+        {
+          reader_state->reader_stats.cur_inventory_round--;
+          reader_state->status = TERMINATED;
+          reader_state->decoder_status = DECODER_TERMINATED;
+        }
+        else reader_state->gen2_logic_status = SEND_QUERY;
+      }
+      else
+      {
+        log << "├──────────────────────────────────────────────────" << std::endl;
+        reader_state->gen2_logic_status = SEND_QUERY_REP;
+      }
     }
 
     /* Function adapted from https://www.cgran.org/wiki/Gen2 */

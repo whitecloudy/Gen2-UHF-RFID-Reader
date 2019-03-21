@@ -127,6 +127,7 @@ namespace gr
         //tag_decoder_impl.cc
         int clustering_sample(sample_information* ys, int mode);
         bool extract_parallel_sample(sample_information* ys);
+        void goto_next_slot(void);
 
         int check_crc(char * bits, int num_bits);
 
@@ -137,7 +138,7 @@ namespace gr
         #endif
 
         // tag_decoder_decoder.cc
-        //int tag_sync(std::vector<float> in, int size);
+        int tag_sync(sample_information* ys);
         //int determine_first_mask_level(std::vector<float> in, int index);
         //int decode_single_bit(std::vector<float> in, int index, int mask_level, float* ret_corr);
         //std::vector<float> tag_detection(std::vector<float> in, int index, int n_expected_bit);

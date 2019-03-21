@@ -11,7 +11,7 @@ namespace gr
 {
   namespace rfid
   {
-/*    int tag_decoder_impl::tag_sync(float* norm_in, int size)
+    int tag_decoder_impl::tag_sync(sample_information* ys)
     // This method searches the preamble and returns the start index of the tag data.
     // If the correlation value exceeds the threshold, it returns the start index of the tag data.
     // Else, it returns -1.
@@ -24,18 +24,18 @@ namespace gr
       int max_index = 0;
 
       // compare all samples with sliding
-      for(int i=0 ; i<size-win_size ; i++)  // i: start point
+      for(int i=0 ; i<ys->size()-win_size ; i++)  // i: start point
       {
         // calculate average_amp (threshold)
         float average_amp = 0.0f;
         for(int j=0 ; j<win_size ; j++)
-          average_amp += norm_in[i+j];
+          average_amp += ys->norm_sample(i+j);
         average_amp /= win_size;
 
         // calculate normalize_factor
         float standard_deviation = 0.0f;
         for(int j=0 ; j<win_size ; j++)
-          standard_deviation += pow(norm_in[i+j] - average_amp, 2);
+          standard_deviation += pow(ys->norm_sample(i+j) - average_amp, 2);
         standard_deviation /= win_size;
         standard_deviation = sqrt(standard_deviation);
 
@@ -46,7 +46,7 @@ namespace gr
           for(int k=0 ; k<(n_samples_TAG_BIT/2.0) ; k++)
           {
             for(int m=0 ; m<2 ; m++)  // m: index of TAG_PREAMBLE type
-                corr_candidates[m] += TAG_PREAMBLE[m][j] * ((norm_in[i + j*(int)(n_samples_TAG_BIT/2.0) + k] - average_amp) / standard_deviation);
+                corr_candidates[m] += TAG_PREAMBLE[m][j] * ((ys->norm_sample(i + j*(int)(n_samples_TAG_BIT/2.0) + k) - average_amp) / standard_deviation);
           }
         }
 
@@ -63,23 +63,24 @@ namespace gr
         }
       }
 
-      #ifdef DEBUG_MESSAGE
-      {
-        std::ofstream debug((debug_message+std::to_string(reader_state->reader_stats.cur_inventory_round)+"_"+std::to_string(reader_state->reader_stats.cur_slot_number)).c_str(), std::ios::app);
-        debug << "threshold= " << threshold << ", corr= " << max_corr << ", index=" << max_index << std::endl;
-        debug << "\t\t\t\t\t** preamble samples **" << std::endl;
-        for(int i=0 ; i<win_size ; i++)
-          debug << norm_in[max_index+i] << " ";
-        debug << std::endl << "\t\t\t\t\t** preamble samples **" << std::endl << std::endl << std::endl << std::endl;
-        debug.close();
-      }
+      #ifdef DEBUG_MESSAGE_DECODER
+      debug_decoder << "\t\t\t\t\t** preamble sample **" << std::endl;
+      debug_decoder << "threshold= " << threshold << "\tcorr= " << max_corr << "\tdata_index= " << max_index << std::endl;
+      for(int i=0 ; i<win_size ; i++)
+        debug_decoder << ys->norm_sample(max_index+i) << " ";
+      debug_decoder << std::endl << std::endl << std::endl << std::endl;
       #endif
 
       // check if correlation value exceeds threshold
       if(max_corr > threshold) return max_index + win_size;
-      else return -1;
+      else
+      {
+        log << "│ Preamble detection fail.." << std::endl;
+        std::cout << "\t\t\t\t\tPreamble FAIL!!";
+        return -1;
+      }
     }
-
+/*
     int tag_decoder_impl::determine_first_mask_level(float* norm_in, int index)
     // This method searches whether the first bit starts with low level or high level.
     // If the first bit starts with low level, it returns -1.
