@@ -29,6 +29,7 @@
 #include <fstream>
 
 #define DEBUG_MESSAGE_SAMPLE
+#define DEBUG_MESSAGE_DECODER
 #define DEBUG_MESSAGE_CLUSTER
 #define DEBUG_MESSAGE_OFG
 
@@ -129,6 +130,8 @@ namespace gr
 
         int check_crc(char * bits, int num_bits);
 
+        void open_debug_ofstream(int mode);
+        void close_debug_ofstream(void);
         #ifdef DEBUG_MESSAGE_SAMPLE
         void print_sample(sample_information* ys);
         #endif
@@ -177,10 +180,13 @@ namespace gr
         #ifdef DEBUG_MESSAGE_SAMPLE
         std::ofstream debug_sample;
         #endif
+        #ifdef DEBUG_MESSAGE_DECODER
+        std::ofstream debug_decoder;
+        #endif
         #ifdef DEBUG_MESSAGE_CLUSTER
         std::ofstream debug_cluster;
         #endif
-        #ifdef DEBUG_MESSAGE_CLUSTER
+        #ifdef DEBUG_MESSAGE_OFG
         std::ofstream debug_OFG;
         #endif
 

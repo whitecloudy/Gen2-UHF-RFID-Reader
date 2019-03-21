@@ -43,57 +43,37 @@ namespace gr
       ninput_items_required[0] = noutput_items;
     }
 
-    int tag_decoder_impl::general_work (int noutput_items, gr_vector_int& ninput_items, gr_vector_const_void_star& input_items, gr_vector_void_star& output_items)
+    int tag_decoder_impl::general_work(int noutput_items, gr_vector_int& ninput_items, gr_vector_const_void_star& input_items, gr_vector_void_star& output_items)
     {
       float* out = (float*)output_items[0];
       int consumed = 0;
 
       if(ninput_items[0] >= reader_state->n_samples_to_ungate)
       {
-        log.open(log_file_path, std::ios::app);
-
         int mode = -1;  // 0:RN16, 1:EPC
         if(reader_state->decoder_status == DECODER_DECODE_RN16) mode = 0;
         else if(reader_state->decoder_status == DECODER_DECODE_EPC) mode = 1;
+        open_debug_ofstream(mode);
 
         sample_information ys((gr_complex*)input_items[0], ninput_items[0], n_samples_TAG_BIT, mode);
 
         #ifdef DEBUG_MESSAGE_SAMPLE
-        std::string debug_file_path = debug_folder_path + std::to_string(reader_state->reader_stats.cur_inventory_round) + "_" + std::to_string(reader_state->reader_stats.cur_slot_number) + "_";
-        if(mode == 0) debug_file_path = debug_file_path + "RN16_sample";
-        else if(mode == 1) debug_file_path = debug_file_path + "EPC_sample";
-        debug_sample.open(debug_file_path, std::ios::app);
         print_sample(&ys);
-        debug_sample.close();
         #endif
 
         int n_tag = clustering_sample(&ys, mode);
-
         if(n_tag == 1)
         {
 
         }
         else if(n_tag > 1)
         {
-          #ifdef DEBUG_MESSAGE_OFG
-          std::string debug_file_path = debug_folder_path + std::to_string(reader_state->reader_stats.cur_inventory_round) + "_" + std::to_string(reader_state->reader_stats.cur_slot_number) + "_";
-          if(mode == 0) debug_file_path = debug_file_path + "RN16_OFG";
-          else if(mode == 1) debug_file_path = debug_file_path + "EPC_OFG";
-          debug_OFG.open(debug_file_path, std::ios::app);
-          #endif
-
           extract_parallel_sample(&ys);
-
-          #ifdef DEBUG_MESSAGE_OFG
-          debug_OFG.close();
-          #endif
         }
 
         // process for GNU RADIO
         produce(1, ninput_items[0]);
         consumed = reader_state->n_samples_to_ungate;
-
-        log.close();
       }
 
       consume_each(consumed);
@@ -110,24 +90,6 @@ namespace gr
         if(n_tag > 1)
         {
 
-          int** flip_info = new int*[center.size()];
-          for(int i=0 ; i<center.size() ; i++)
-            flip_info[i] = new int[center.size()];
-          count_flip(flip_info, clustered_idx, center.size());
-
-          OFG_node* OFG = new OFG_node[center.size()];
-          construct_OFG(OFG, flip_info, center.size(), n_tag);
-          for(int i=0 ; i<center.size() ; i++)
-          {
-            OFG[i].layer = n_tag + 1;
-            OFG[i].state = new int[n_tag];
-            for(int j=0 ; j<n_tag ; j++)
-              OFG[i].state[j] = -1;
-          }
-          determine_OFG_state(OFG, center.size(), n_tag);
-
-          std::vector<int>* extracted_sample = new std::vector<int>[n_tag];
-          extract_parallel_sample(extracted_sample, clustered_idx, OFG, n_tag);
 
           int i;
           for(i=0 ; i<n_tag ; i++)
@@ -418,14 +380,9 @@ namespace gr
         //consumed = reader_state->n_samples_to_ungate;
       }*/
 
+
     int tag_decoder_impl::clustering_sample(sample_information* ys, int mode)
     {
-      #ifdef DEBUG_MESSAGE_CLUSTER
-      std::string debug_file_path = debug_folder_path + std::to_string(reader_state->reader_stats.cur_inventory_round) + "_" + std::to_string(reader_state->reader_stats.cur_slot_number) + "_";
-      if(mode == 0) debug_file_path = debug_file_path + "RN16_cluster";
-      debug_cluster.open(debug_file_path, std::ios::app);
-      #endif
-
       center_identification(ys);
       sample_clustering(ys);
 
@@ -450,10 +407,6 @@ namespace gr
         #endif
       }
       calc_n_tag(ys);
-
-      #ifdef DEBUG_MESSAGE_CLUSTER
-      debug_cluster.close();
-      #endif
 
       return ys->n_tag();
     }
@@ -517,6 +470,62 @@ namespace gr
       return -1;
       else
       return 1;
+    }
+
+    void tag_decoder_impl::open_debug_ofstream(int mode)
+    {
+      std::string debug_file_path_prefix = debug_folder_path + std::to_string(reader_state->reader_stats.cur_inventory_round) + "_" + std::to_string(reader_state->reader_stats.cur_slot_number) + "_";
+      std::string debug_file_path;
+      log.open(log_file_path, std::ios::app);
+
+      #ifdef DEBUG_MESSAGE_SAMPLE
+      debug_file_path.clear();
+      if(mode == 0) debug_file_path = debug_file_path_prefix + "RN16_sample";
+      else if(mode == 1) debug_file_path = debug_file_path_prefix + "EPC_sample";
+      debug_sample.open(debug_file_path, std::ios::app);
+      #endif
+
+      #ifdef DEBUG_MESSAGE_DECODER
+      debug_file_path.clear();
+      if(mode == 0) debug_file_path = debug_file_path_prefix + "RN16_decoder";
+      else if(mode == 1) debug_file_path = debug_file_path_prefix + "EPC_decoder";
+      debug_decoder.open(debug_file_path, std::ios::app);
+      #endif
+
+      #ifdef DEBUG_MESSAGE_CLUSTER
+      debug_file_path.clear();
+      if(mode == 0) debug_file_path = debug_file_path_prefix + "RN16_cluster";
+      else if(mode == 1) debug_file_path = debug_file_path_prefix + "EPC_cluster";
+      debug_cluster.open(debug_file_path, std::ios::app);
+      #endif
+
+      #ifdef DEBUG_MESSAGE_OFG
+      debug_file_path.clear();
+      if(mode == 0) debug_file_path = debug_file_path_prefix + "RN16_OFG";
+      else if(mode == 1) debug_file_path = debug_file_path_prefix + "EPC_OFG";
+      debug_OFG.open(debug_file_path, std::ios::app);
+      #endif
+    }
+
+    void tag_decoder_impl::close_debug_ofstream(void)
+    {
+      log.close();
+
+      #ifdef DEBUG_MESSAGE_SAMPLE
+      debug_sample.close();
+      #endif
+
+      #ifdef DEBUG_MESSAGE_DECODER
+      debug_decoder.close();
+      #endif
+
+      #ifdef DEBUG_MESSAGE_CLUSTER
+      debug_cluster.close();
+      #endif
+
+      #ifdef DEBUG_MESSAGE_OFG
+      debug_OFG.close();
+      #endif
     }
 
     #ifdef DEBUG_MESSAGE_SAMPLE
