@@ -127,6 +127,8 @@ namespace gr
         //tag_decoder_impl.cc
         int clustering_sample(sample_information* ys, int mode);
         bool extract_parallel_sample(sample_information* ys);
+        void decode_RN16(sample_information* ys, int data_index);
+        void decode_EPC(sample_information* ys, int data_index);
         void goto_next_slot(void);
 
         int check_crc(char * bits, int num_bits);
