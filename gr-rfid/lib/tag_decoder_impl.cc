@@ -44,11 +44,13 @@ namespace gr
       float* out = (float*)output_items[0];
       int consumed = 0;
 
-      if(ninput_items[0] >= reader_state->n_samples_to_ungate)
+      if(reader_state->decoder_status != DECODER_PAUSE && ninput_items[0] >= reader_state->n_samples_to_ungate)
       {
         int mode = -1;  // 0:RN16, 1:EPC
         if(reader_state->decoder_status == DECODER_DECODE_RN16) mode = 0;
         else if(reader_state->decoder_status == DECODER_DECODE_EPC) mode = 1;
+        else if(reader_state->decoder_status == DECODER_PAUSE) mode = 10;
+        std::cout<<"(1)mode="<<mode<<std::endl;
         open_debug_ofstream(mode);
 
         sample_information ys((gr_complex*)input_items[0], ninput_items[0], n_samples_TAG_BIT, mode);
@@ -56,32 +58,43 @@ namespace gr
         #ifdef DEBUG_MESSAGE_SAMPLE
         print_sample(&ys);
         #endif
-
-        int n_tag = clustering_sample(&ys, mode);
-        if(n_tag == 1)
+std::cout << "ys size=" << ys.size()<<std::endl;
+        if(ys.size() == 0)
         {
-          // detect preamble
-          int data_index = tag_sync(&ys);  // find where the tag data bits start
-
-          // process for GNU RADIO
-          int written_sync = 0;
-          for(int j=0 ; j<ninput_items[0] ; j++)
-            written_sync++;
-          produce(1, written_sync);
-
-          if(data_index == -1) goto_next_slot();
-          log << "│ Preamble detected!" << std::endl;
-
-          if(mode == 0) decode_RN16(&ys, data_index);
-          else if(mode == 1) decode_EPC(&ys, data_index);
+          log << "│ No received signal.." << std::endl;
+          reader_state->decoder_status = DECODER_PAUSE;
+          goto_next_slot();
         }
-        else if(n_tag > 1)
+        else
         {
-          extract_parallel_sample(&ys);
+          int n_tag = clustering_sample(&ys, mode);
+          if(n_tag == 1)
+          {
+            // detect preamble
+            int index = tag_sync(&ys);  // find where the tag data bits start
+
+            if(index == -1) goto_next_slot();
+            log << "│ Preamble detected!" << std::endl;
+
+            if(mode == 0) decode_RN16(&ys, out, index);
+            else if(mode == 1) decode_EPC(&ys, index);
+          }
+          else if(n_tag > 1)
+          {
+            extract_parallel_sample(&ys);
+            log << "│ " << n_tag << " tags detected!" << std::endl;
+            goto_next_slot();
+          }
         }
+
+        if(reader_state->decoder_status == DECODER_DECODE_RN16) mode = 0;
+        else if(reader_state->decoder_status == DECODER_DECODE_EPC) mode = 1;
+        else if(reader_state->decoder_status == DECODER_PAUSE) mode = 10;
+        std::cout<<"(2)mode="<<mode<<std::endl;
+        close_debug_ofstream();
 
         // process for GNU RADIO
-        produce(1, ninput_items[0]);
+        produce(1, reader_state->n_samples_to_ungate);
         consumed = reader_state->n_samples_to_ungate;
       }
 
@@ -217,9 +230,9 @@ namespace gr
       return true;
     }
 
-    void tag_decoder_impl::decode_RN16(sample_information* ys, int data_index)
+    void tag_decoder_impl::decode_RN16(sample_information* ys, float* out, int index)
     {
-      std::vector<float> RN16_bits = tag_detection(ys, data_index, RN16_BITS-1);  // RN16_BITS includes one dummy bit
+      std::vector<float> RN16_bits = tag_detection(ys, index, RN16_BITS-1);  // RN16_BITS includes one dummy bit
 
       // write RN16_bits to the next block
       log << "│ RN16=";
@@ -235,24 +248,26 @@ namespace gr
       // go to the next state
       log << std::endl << "├──────────────────────────────────────────────────" << std::endl;
       std::cout << "RN16 decoded | ";
+      reader_state->decoder_status = DECODER_PAUSE;
       reader_state->gen2_logic_status = SEND_ACK;
     }
 
-    void tag_decoder_impl::decode_EPC(sample_information* ys, int data_index)
+    void tag_decoder_impl::decode_EPC(sample_information* ys, int index)
     {
-      std::vector<float> EPC_bits = tag_detection(norm_in, EPC_index, EPC_BITS-1);  // EPC_BITS includes one dummy bit
+      std::vector<float> EPC_bits = tag_detection(ys, index, EPC_BITS-1);  // EPC_BITS includes one dummy bit
 
       // convert EPC_bits from float to char in order to use Buettner's function
-      log.open("debug_message", std::ios::app);
       log << "│ EPC=";
-      for(int i=0 ; i<EPC_bits.size() ; i++)
+      for(int i=0 ; i<EPC_bits.size()-1 ; i++)
       {
         if(i % 4 == 0) log << " ";
         log << EPC_bits[i];
         char_bits[i] = EPC_bits[i] + '0';
         if(i % 16 == 15) log << std::endl << "│     ";
       }
-      log.close();
+      log << EPC_bits[EPC_bits.size()-1];
+      char_bits[EPC_bits.size()-1] = EPC_bits[EPC_bits.size()-1] + '0';
+      log << std::endl;
 
       // check CRC
       if(check_crc(char_bits, 128) == 1) // success to decode EPC
@@ -278,6 +293,7 @@ namespace gr
         std::cout << "\t\t\t\t\tCRC FAIL!!";
       }
 
+      reader_state->decoder_status = DECODER_PAUSE;
       goto_next_slot();
     }
 
@@ -422,6 +438,19 @@ namespace gr
       debug_sample << "\t\t\t\t\t** norm **" << std::endl;
       for(int i=0 ; i<ys->total_size() ; i++)
         debug_sample << ys->norm_in(i) << " ";
+      debug_sample << std::endl;
+      debug_sample << "\t\t\t\t\t** sample I **" << std::endl;
+      for(int i=0 ; i<ys->size() ; i++)
+        debug_sample << ys->sample(i).real() << " ";
+      debug_sample << std::endl;
+      debug_sample << "\t\t\t\t\t** sample Q **" << std::endl;
+      for(int i=0 ; i<ys->size() ; i++)
+        debug_sample << ys->sample(i).imag() << " ";
+      debug_sample << std::endl;
+      debug_sample << "\t\t\t\t\t** sample norm **" << std::endl;
+      for(int i=0 ; i<ys->size() ; i++)
+        debug_sample << ys->norm_sample(i) << " ";
+      debug_sample << std::endl;
     }
     #endif
   } /* namespace rfid */

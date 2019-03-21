@@ -18,6 +18,8 @@ namespace gr
       _norm_sample.clear();
       _size = 0;
 
+      _corr = 0;
+
       _decision.clear();
       _center.clear();
       _cluster.clear();
@@ -43,6 +45,8 @@ namespace gr
       if(mode == 0) cut_noise_sample(TAG_PREAMBLE_BITS + RN16_BITS - 1, n_samples_TAG_BIT);
       else if(mode == 1) cut_noise_sample(TAG_PREAMBLE_BITS + EPC_BITS - 1, n_samples_TAG_BIT);
 
+      _corr = 0;
+
       _decision.clear();
       _center.clear();
       _cluster.clear();
@@ -52,8 +56,6 @@ namespace gr
       _OFG_node.clear();
       _binary_sample.clear();
     }
-
-    tag_decoder_impl::sample_information::~sample_information(){}
 
     void tag_decoder_impl::sample_information::cut_noise_sample(int data_len, int n_samples_TAG_BIT)
     {
@@ -69,8 +71,13 @@ namespace gr
       }
 
       int start = idx;  // start idx of the data sample
-
       idx += data_len*n_samples_TAG_BIT;
+      if(idx > _total_size)
+      {
+        _size = 0;
+        return;
+      }
+
       average = _norm_in[idx];
       int count = 0;
 
@@ -99,6 +106,13 @@ namespace gr
       }
 
       _size = end - start + 1;
+    }
+
+    tag_decoder_impl::sample_information::~sample_information(){}
+
+    void tag_decoder_impl::sample_information::set_corr(float __corr)
+    {
+      _corr = __corr;
     }
 
     void tag_decoder_impl::sample_information::push_back_decision(double __decision)
@@ -246,6 +260,11 @@ namespace gr
     int tag_decoder_impl::sample_information::size(void)
     {
       return _size;
+    }
+
+    float tag_decoder_impl::sample_information::corr(void)
+    {
+      return _corr;
     }
 
     double tag_decoder_impl::sample_information::decision(int index)

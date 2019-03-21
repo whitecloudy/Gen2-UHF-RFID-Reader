@@ -67,6 +67,8 @@ namespace gr
             std::vector<float> _norm_sample;
             int _size;
 
+            float _corr;
+
             std::vector<double> _decision;
             std::vector<int> _center;
             std::vector<int> _cluster;
@@ -81,6 +83,8 @@ namespace gr
             sample_information(gr_complex*, int, int, int);
             void cut_noise_sample(int, int);
             ~sample_information();
+
+            void set_corr(float);
 
             void push_back_decision(double);
             void push_back_center(int);
@@ -109,6 +113,8 @@ namespace gr
             float norm_sample(int);
             int size(void);
 
+            float corr(void);
+
             double decision(int);
             int center(int);
             int center_size(void);
@@ -127,7 +133,7 @@ namespace gr
         //tag_decoder_impl.cc
         int clustering_sample(sample_information* ys, int mode);
         bool extract_parallel_sample(sample_information* ys);
-        void decode_RN16(sample_information* ys, int data_index);
+        void decode_RN16(sample_information* ys, float* out, int data_index);
         void decode_EPC(sample_information* ys, int data_index);
         void goto_next_slot(void);
 
@@ -141,9 +147,9 @@ namespace gr
 
         // tag_decoder_decoder.cc
         int tag_sync(sample_information* ys);
-        //int determine_first_mask_level(std::vector<float> in, int index);
-        //int decode_single_bit(std::vector<float> in, int index, int mask_level, float* ret_corr);
-        //std::vector<float> tag_detection(std::vector<float> in, int index, int n_expected_bit);
+        std::vector<float> tag_detection(sample_information* ys, int index, int n_expected_bit);
+        int determine_first_mask_level(sample_information* ys, int index);
+        int decode_single_bit(sample_information* ys, int index, int mask_level);
 
         // tag_decoder_clustering.cc
         double IQ_distance(const gr_complex p1, const gr_complex p2);

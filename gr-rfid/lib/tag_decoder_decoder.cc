@@ -80,40 +80,80 @@ namespace gr
         return -1;
       }
     }
-/*
-    int tag_decoder_impl::determine_first_mask_level(float* norm_in, int index)
-    // This method searches whether the first bit starts with low level or high level.
-    // If the first bit starts with low level, it returns -1.
-    // If the first bit starts with high level, it returns 0.
+
+    std::vector<float> tag_decoder_impl::tag_detection(sample_information* ys, int index, int n_expected_bit)
+    // This method decodes n_expected_bit of data by using previous methods, and returns the vector of the decoded data.
     // index: start point of "data bit", do not decrease half bit!
     {
-      float max_max_corr = 0.0f;
-      int max_max_index = -1;
+      std::vector<float> decoded_bits;
 
-      for(int k=0 ; k<2 ; k++)
+      int mask_level = determine_first_mask_level(ys, index);
+      int shift = 0;
+
+      float threshold = 0.8f;
+
+      for(int i=0 ; i<n_expected_bit ; i++)
       {
-        float max_corr = 0.0f;
-        int max_index = decode_single_bit(norm_in, index, k, &max_corr);
+        int idx = index + i*n_samples_TAG_BIT + shift;  // start point of decoding bit with shifting
+        int curr_shift = 0;
 
-        if(max_corr > max_max_corr)
+        int max_bit = decode_single_bit(ys, idx, mask_level);
+        float max_corr = ys->corr();
+
+        if(max_corr < threshold)
         {
-          max_max_corr = max_corr;
-          max_max_index = k;
+          for(int j=-SHIFT_SIZE ; j<SHIFT_SIZE ; j++)
+          {
+            int bit = decode_single_bit(ys, idx+j, mask_level);
+            float corr = ys->corr();
+
+            if(corr > max_corr)
+            {
+              max_corr = corr;
+              max_bit = bit;
+              curr_shift = j;
+            }
+          }
         }
+        shift += curr_shift;
+
+        #ifdef DEBUG_MESSAGE_DECODER
+        debug_decoder << "\t\t\t\t\t**" << i+1 << "th bit **" << std::endl;
+        debug_decoder << "threshold= " << threshold << "\tcorr= " << max_corr << "\tdecoded bit= " << max_bit << "\tcurr shift= " << curr_shift << "\tshift= " << shift;
+        if(mask_level) debug_decoder << "\thigh start" << std::endl;
+        else debug_decoder << "\tlow start" << std::endl;
+        for(int j=-curr_shift ; j<n_samples_TAG_BIT-curr_shift ; j++)
+          debug_decoder << ys->norm_sample(idx+j) << " ";
+        debug_decoder << std::endl << std::endl << std::endl;
+        #endif
+
+        if(max_bit) mask_level *= -1; // change mask_level(start level of the next bit) when the decoded bit is 1
+
+        decoded_bits.push_back(max_bit);
       }
 
-      if(max_max_index == 0) max_max_index = -1;
-      return max_max_index;
+      return decoded_bits;
     }
 
-    int tag_decoder_impl::decode_single_bit(float* norm_in, int index, int mask_level, float* ret_corr)
+    int tag_decoder_impl::determine_first_mask_level(sample_information* ys, int index)
+    // This method searches whether the first bit starts with low level or high level.
+    // If the first bit starts with low level, it returns -1.
+    // If the first bit starts with high level, it returns 1.
+    // index: start point of "data bit", do not decrease half bit!
+    {
+      decode_single_bit(ys, index, -1);
+      float low_level_corr = ys->corr();
+
+      decode_single_bit(ys, index, 1);
+      if(low_level_corr > ys->corr()) return -1;
+      else return 1;
+    }
+
+    int tag_decoder_impl::decode_single_bit(sample_information* ys, int index, int mask_level)
     // This method decodes single bit and returns the decoded value and the correlation score.
     // index: start point of "data bit", do not decrease half bit!
     // mask_level: start level of "decoding bit". (-1)low level start, (1)high level start.
     {
-
-      std::ofstream time("time/time", std::ios::app);
-
       const float masks[2][2][4] = { // first, last elements are extra bits. second, third elements are real signal.
         {{1, -1, 1, -1}, {1, -1, -1, 1}}, // low level start
         {{-1, 1, -1, 1}, {-1, 1, 1, -1}}  // high level start
@@ -124,17 +164,14 @@ namespace gr
       float max_corr = 0.0f;
       int max_index = -1;
 
-      clock_t start, end;
-      start = clock();
-
       float average_amp = 0.0f;
       for(int j=-(n_samples_TAG_BIT*0.5) ; j<(n_samples_TAG_BIT*1.5) ; j++)
-        average_amp += norm_in[index+j];
+        average_amp += ys->norm_sample(index+j);
       average_amp /= (int)(2*n_samples_TAG_BIT);
 
       float average_abs_amp = 0.0f;
-      for (int j=-(n_samples_TAG_BIT*0.5); j<(n_samples_TAG_BIT*1.5); j++)
-          average_abs_amp += abs(norm_in[index+j] - average_amp);
+      for(int j=-(n_samples_TAG_BIT*0.5) ; j<(n_samples_TAG_BIT*1.5) ; j++)
+          average_abs_amp += abs(ys->norm_sample(index+j) - average_amp);
       average_abs_amp /= (int)(2*n_samples_TAG_BIT);
 
       // comepare with two masks (0 or 1)
@@ -146,7 +183,7 @@ namespace gr
           int start = index + (j-1)*(n_samples_TAG_BIT*0.5);
           for(int k=0 ; k<(n_samples_TAG_BIT*0.5) ; k++)
           {
-            float scaled_amp = (norm_in[start+k] - average_amp) / average_abs_amp;
+            float scaled_amp = (ys->norm_sample(start+k) - average_amp) / average_abs_amp;
             corr += masks[mask_level][i][j] * scaled_amp;
           }
         }
@@ -158,74 +195,8 @@ namespace gr
         }
       }
 
-      max_corr /= n_samples_TAG_BIT*2;
-      (*ret_corr) = max_corr;
-
-      end = clock();
-      time << ((double)(end-start)/CLOCKS_PER_SEC) << std::endl;
-      time.close();
-
+      ys->set_corr(max_corr / (n_samples_TAG_BIT*2));
       return max_index;
     }
-
-    std::vector<float> tag_decoder_impl::tag_detection(float* norm_in, int index, int n_expected_bit)
-    // This method decodes n_expected_bit of data by using previous methods, and returns the vector of the decoded data.
-    // index: start point of "data bit", do not decrease half bit!
-    {
-      std::vector<float> decoded_bits;
-
-      int mask_level = determine_first_mask_level(norm_in, index);
-      int shift = 0;
-
-      float threshold = 0.8f;
-
-      for(int i=0 ; i<n_expected_bit ; i++)
-      {
-        int idx = index + i*n_samples_TAG_BIT + shift;  // start point of decoding bit with shifting
-        float max_corr = 0.0f;
-        int max_index;
-        int curr_shift = 0;
-
-        max_index = decode_single_bit(norm_in, idx, mask_level, &max_corr);
-        if (max_corr < threshold)
-        {
-          for (int j=0; j<(SHIFT_SIZE*2+1); j++)
-          {
-            float corr = 0.0f;
-            int index = decode_single_bit(norm_in, idx+j-SHIFT_SIZE, mask_level, &corr);
-
-            if (corr > max_corr)
-            {
-              max_corr = corr;
-              max_index = index;
-              curr_shift = j - SHIFT_SIZE;
-            }
-          }
-        }
-        shift += curr_shift;
-
-        #ifdef DEBUG_MESSAGE
-        {
-          std::ofstream debug((debug_message+std::to_string(reader_state->reader_stats.cur_inventory_round)+"_"+std::to_string(reader_state->reader_stats.cur_slot_number)).c_str(), std::ios::app);
-          debug << "[" << i+1 << "th bit] corr=" << max_corr << ", curr_shift=" << curr_shift << ", shift=" << shift << ", decoded_bit=" << max_index;
-          if(mask_level) debug << " (high start)" << std::endl;
-          else debug << " (low start)" << std::endl;
-          debug << "\t\t\t\t\t** shifted bit samples **" << std::endl;
-          for(int j=idx-SHIFT_SIZE ; j<idx+n_samples_TAG_BIT+SHIFT_SIZE ; j++)
-            debug << norm_in[i] << " ";
-          debug << std::endl << "\t\t\t\t\t** shifted bit samples **" << std::endl << std::endl << std::endl << std::endl;
-          debug.close();
-        }
-        #endif
-
-        if(max_index) mask_level *= -1; // change mask_level(start level of the next bit) when the decoded bit is 1
-
-        decoded_bits.push_back(max_index);
-
-      }
-
-      return decoded_bits;
-    }
-*/
   } /* namespace rfid */
 } /* namespace gr */

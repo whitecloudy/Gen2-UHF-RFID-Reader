@@ -291,7 +291,7 @@ namespace gr
         reader_state->reader_stats.n_queries_sent +=1;
 
         // Controls the other two blocks
-        reader_state->decoder_status = DECODER_DECODE_RN16;
+        reader_state->decoder_status = DECODER_DECODE_RN16;std::cout<<"now change to rn16"<<std::endl;
         reader_state->gate_status    = GATE_SEEK_RN16;
 
         memcpy(&out[written], &preamble[0], sizeof(float) * preamble.size() );
