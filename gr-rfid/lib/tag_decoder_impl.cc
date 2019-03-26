@@ -44,13 +44,11 @@ namespace gr
       float* out = (float*)output_items[0];
       int consumed = 0;
 
-      if(reader_state->decoder_status != DECODER_PAUSE && ninput_items[0] >= reader_state->n_samples_to_ungate)
+      if(ninput_items[0] >= reader_state->n_samples_to_ungate)
       {
         int mode = -1;  // 0:RN16, 1:EPC
         if(reader_state->decoder_status == DECODER_DECODE_RN16) mode = 0;
         else if(reader_state->decoder_status == DECODER_DECODE_EPC) mode = 1;
-        else if(reader_state->decoder_status == DECODER_PAUSE) mode = 10;
-        std::cout<<"(1)mode="<<mode<<std::endl;
         open_debug_ofstream(mode);
 
         sample_information ys((gr_complex*)input_items[0], ninput_items[0], n_samples_TAG_BIT, mode);
@@ -58,26 +56,34 @@ namespace gr
         #ifdef DEBUG_MESSAGE_SAMPLE
         print_sample(&ys);
         #endif
-std::cout << "ys size=" << ys.size()<<std::endl;
+
         if(ys.size() == 0)
         {
           log << "│ No received signal.." << std::endl;
-          reader_state->decoder_status = DECODER_PAUSE;
+          reader_state-> n_samples_to_ungate = (RN16_BITS + TAG_PREAMBLE_BITS + EXTRA_BITS) * n_samples_TAG_BIT;
+          reader_state->gate_status = GATE_CLOSED;
+          reader_state->status = RUNNING;
+          log<<"gate free\n";
+          reader_state->decoder_status = DECODER_DECODE_RN16;
           goto_next_slot();
         }
         else
         {
-          int n_tag = clustering_sample(&ys, mode);
+          //int n_tag = clustering_sample(&ys, mode);
+          int n_tag = 1;
           if(n_tag == 1)
           {
             // detect preamble
             int index = tag_sync(&ys);  // find where the tag data bits start
 
             if(index == -1) goto_next_slot();
-            log << "│ Preamble detected!" << std::endl;
+            else
+            {
+              log << "│ Preamble detected!" << std::endl;
 
-            if(mode == 0) decode_RN16(&ys, out, index);
-            else if(mode == 1) decode_EPC(&ys, index);
+              if(mode == 0) decode_RN16(&ys, out, index);
+              else if(mode == 1) decode_EPC(&ys, index);
+            }
           }
           else if(n_tag > 1)
           {
@@ -87,17 +93,14 @@ std::cout << "ys size=" << ys.size()<<std::endl;
           }
         }
 
-        if(reader_state->decoder_status == DECODER_DECODE_RN16) mode = 0;
-        else if(reader_state->decoder_status == DECODER_DECODE_EPC) mode = 1;
-        else if(reader_state->decoder_status == DECODER_PAUSE) mode = 10;
-        std::cout<<"(2)mode="<<mode<<std::endl;
         close_debug_ofstream();
 
         // process for GNU RADIO
-        produce(1, reader_state->n_samples_to_ungate);
-        consumed = reader_state->n_samples_to_ungate;
+        produce(1, ninput_items[0]);
+        consumed = ninput_items[0];
       }
 
+      // Tell runtime system how many input items we consumed on each input stream.
       consume_each(consumed);
       return WORK_CALLED_PRODUCE;
     }
@@ -248,7 +251,11 @@ std::cout << "ys size=" << ys.size()<<std::endl;
       // go to the next state
       log << std::endl << "├──────────────────────────────────────────────────" << std::endl;
       std::cout << "RN16 decoded | ";
-      reader_state->decoder_status = DECODER_PAUSE;
+      reader_state->n_samples_to_ungate = (EPC_BITS + TAG_PREAMBLE_BITS + EXTRA_BITS) * n_samples_TAG_BIT;
+      reader_state->gate_status = GATE_CLOSED;
+      reader_state->status = RUNNING;
+      log<<"gate free_RN16\n";
+      reader_state->decoder_status = DECODER_DECODE_EPC;
       reader_state->gen2_logic_status = SEND_ACK;
     }
 
@@ -278,7 +285,7 @@ std::cout << "ys size=" << ys.size()<<std::endl;
           tag_id += std::pow(2, 7-i) * EPC_bits[104+i];
 
         //GR_LOG_INFO(d_debug_logger, "EPC CORRECTLY DECODED, TAG ID : " << tag_id);
-        log << "CRC check success! Tag ID= " << tag_id << std::endl;
+        log << "│ CRC check success! Tag ID= " << tag_id << std::endl;
         std::cout << "\t\t\t\t\t\t\t\t\t\tTag ID= " << tag_id;
         reader_state->reader_stats.n_epc_correct++;
 
@@ -293,7 +300,11 @@ std::cout << "ys size=" << ys.size()<<std::endl;
         std::cout << "\t\t\t\t\tCRC FAIL!!";
       }
 
-      reader_state->decoder_status = DECODER_PAUSE;
+      reader_state->n_samples_to_ungate = (RN16_BITS + TAG_PREAMBLE_BITS + EXTRA_BITS) * n_samples_TAG_BIT;
+      reader_state->gate_status = GATE_CLOSED;
+      reader_state->status = RUNNING;
+      log<<"gate free_EPC\n";
+      reader_state->decoder_status = DECODER_DECODE_RN16;
       goto_next_slot();
     }
 

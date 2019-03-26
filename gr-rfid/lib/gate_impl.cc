@@ -94,26 +94,19 @@ namespace gr
       gr_complex *out = (gr_complex *) output_items[0];
 
       int n_items = ninput_items[0];
-      int number_samples_consumed = n_items;
+      int number_samples_consumed = 0;//n_items;
       float sample_ampl = 0;
       int written = 0;
 
-        // Gate block is controlled by the Gen2 Logic block
-      if(reader_state->gate_status == GATE_SEEK_EPC)
-      {
-        reader_state->gate_status = GATE_CLOSED;
-        reader_state->n_samples_to_ungate = (EPC_BITS + TAG_PREAMBLE_BITS + EXTRA_BITS) * n_samples_TAG_BIT;
-        n_samples = 0;
-      }
-      else if (reader_state->gate_status == GATE_SEEK_RN16)
-      {
-        reader_state->gate_status = GATE_CLOSED;
-        reader_state->n_samples_to_ungate = (RN16_BITS + TAG_PREAMBLE_BITS + EXTRA_BITS) * n_samples_TAG_BIT;
-        n_samples = 0;
-      }
+      log.open(log_file_path, std::ios::app);
 
-      if (reader_state->status == RUNNING)
+      n_samples = 0;
+log << "in="<<n_items << "sum=" << n_items<< " ";
+//      while (reader_state->status == WAITING){FILE* file = fopen("a", "w"); fprintf(file, "a"); fclose(file); }// dummy code (want to remove);
+      //if (reader_state->status == RUNNING)
       {
+    //    number_samples_consumed = n_items;
+
         for(int i = 0; i < n_items; i++)
         {
           // Tracking average amplitude
@@ -134,7 +127,7 @@ namespace gr
 
             n_samples++;
 
-            // Potitive edge -> Negative edge
+            // Positive edge -> Negative edge
             if( sample_ampl < sample_thresh && signal_state == POS_EDGE)
             {
               n_samples = 0;
@@ -145,7 +138,16 @@ namespace gr
             {
               signal_state = POS_EDGE;
               if (n_samples > n_samples_PW/2)
+              {
                 num_pulses++;
+                if(reader_state->gate_status_2 == GATE_NORMAL)
+                {
+                  reader_state->gate_status_2 = GATE_FIND_PULSE; log<<"gate find pulse\n";
+                  number_samples_consumed = i - EXTRA_BITS*n_samples_TAG_BIT;
+                  if(number_samples_consumed<0) number_samples_consumed = 0;
+                  log<<"consume1=" <<number_samples_consumed <<" ";
+                }
+              }
               else
                 num_pulses = 0;
               n_samples = 0;
@@ -154,9 +156,15 @@ namespace gr
             if(n_samples > n_samples_T1 && signal_state == POS_EDGE && num_pulses > NUM_PULSES_COMMAND)
             {
               //GR_LOG_INFO(d_debug_logger, "READER COMMAND DETECTED");
-
+               while (reader_state->status == WAITING){FILE* file = fopen("a", "w"); fprintf(file, "a"); fclose(file); }// dummy code (want to remove);
+              /*while(reader_state->gate_status_2 == GATE_WAIT_DECODER)
+              {
+                FILE* file = fopen("a", "w"); fprintf(file, "a"); fclose(file); // dummy code (want to remove)
+              }*/
+              log << "\tungate="<<reader_state->n_samples_to_ungate<<std::endl;
+              //reader_state->gate_status_2 = GATE_WAIT_DECODER; log<<"gate wait decoder\n";
+              reader_state->status = WAITING; log<<"gate wait decoder\n";
               reader_state->gate_status = GATE_OPEN;
-
               reader_state->magn_squared_samples.resize(0);
 
               reader_state->magn_squared_samples.push_back(std::norm(in[i] - dc_est));
@@ -178,12 +186,17 @@ namespace gr
             if (n_samples >= reader_state->n_samples_to_ungate)
             {
               reader_state->gate_status = GATE_CLOSED;
-              number_samples_consumed = i+1;
+              reader_state->gate_status_2 = GATE_NORMAL;log<<"gate normal\n";
+              number_samples_consumed = i+1; log<<"consume2=" <<i+1<<" ";
               break;
             }
           } // else
         } // for(int i = 0; i < n_items; i++)
       } // if (reader_state->status == RUNNING)
+
+
+    if(reader_state->gate_status_2 == GATE_NORMAL && number_samples_consumed == 0) {number_samples_consumed = n_items; log<<"consume=" <<n_items<<" ";}
+log.close();
     consume_each (number_samples_consumed);
     return written;
     } // gate_impl::general_work

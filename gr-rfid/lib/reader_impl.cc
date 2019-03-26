@@ -290,10 +290,6 @@ namespace gr
         std::cout << std::endl << "[" << reader_state->reader_stats.cur_inventory_round << "_" << reader_state->reader_stats.cur_slot_number << "] ";
         reader_state->reader_stats.n_queries_sent +=1;
 
-        // Controls the other two blocks
-        reader_state->decoder_status = DECODER_DECODE_RN16;std::cout<<"now change to rn16"<<std::endl;
-        reader_state->gate_status    = GATE_SEEK_RN16;
-
         memcpy(&out[written], &preamble[0], sizeof(float) * preamble.size() );
         written+=preamble.size();
 
@@ -331,10 +327,6 @@ namespace gr
         if (ninput_items[0] == RN16_BITS - 1)
         {
           reader_state->reader_stats.n_ack_sent +=1;
-
-          // Controls the other two blocks
-          reader_state->decoder_status = DECODER_DECODE_EPC;
-          reader_state->gate_status    = GATE_SEEK_EPC;
 
           gen_ack_bits(in);
 
@@ -383,9 +375,6 @@ namespace gr
         log.close();
         std::cout << std::endl << "[" << reader_state->reader_stats.cur_inventory_round << "_" << reader_state->reader_stats.cur_slot_number << "] ";
 
-        // Controls the other two blocks
-        reader_state->decoder_status = DECODER_DECODE_RN16;
-        reader_state->gate_status    = GATE_SEEK_RN16;
         reader_state->reader_stats.n_queries_sent +=1;
 
         memcpy(&out[written], &query_rep[0], sizeof(float) * query_rep.size() );
@@ -405,9 +394,6 @@ namespace gr
 
         case SEND_QUERY_ADJUST:
         //GR_LOG_INFO(d_debug_logger, "SEND QUERY_ADJUST");
-        // Controls the other two blocks
-        reader_state->decoder_status = DECODER_DECODE_RN16;
-        reader_state->gate_status    = GATE_SEEK_RN16;
         reader_state->reader_stats.n_queries_sent +=1;
 
         memcpy(&out[written], &frame_sync[0], sizeof(float) * frame_sync.size() );

@@ -41,6 +41,8 @@ namespace gr {
         std::vector<gr_complex> dc_samples;
         gr_complex dc_est;
 
+        std::ofstream log;
+
         SIGNAL_STATE signal_state;
 
        public:
