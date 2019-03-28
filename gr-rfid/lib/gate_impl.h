@@ -42,6 +42,7 @@ namespace gr {
         gr_complex dc_est;
 
         std::ofstream log;
+        int consume_count;
 
         SIGNAL_STATE signal_state;
 

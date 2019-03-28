@@ -29,11 +29,10 @@
 namespace gr {
   namespace rfid {
 
-    enum STATUS               {RUNNING, WAITING, TERMINATED};
+    enum STATUS             {RUNNING, WAITING, TERMINATED};
     enum GEN2_LOGIC_STATUS  {SEND_QUERY, SEND_ACK, SEND_QUERY_REP, IDLE, SEND_CW, START, SEND_QUERY_ADJUST, SEND_NAK_QR, SEND_NAK_Q, POWER_DOWN};
-    enum GATE_STATUS        {GATE_OPEN, GATE_CLOSED};
-    enum GATE_STATUS_2      {GATE_NORMAL, GATE_FIND_PULSE};
-    enum DECODER_STATUS     {DECODER_DECODE_RN16, DECODER_DECODE_EPC, DECODER_TERMINATED};
+    enum GATE_STATUS        {GATE_START, GATE_OPEN, GATE_CLOSED, GATE_SEEK_RN16, GATE_SEEK_EPC};
+    enum DECODER_STATUS     {DECODER_DECODE_RN16, DECODER_DECODE_EPC, DECODER_IDLE, DECODER_TERMINATED};
 
     struct READER_STATS
     {
@@ -59,7 +58,6 @@ namespace gr {
       STATUS               status;
       GEN2_LOGIC_STATUS   gen2_logic_status;
       GATE_STATUS         gate_status;
-      GATE_STATUS_2       gate_status_2;
       DECODER_STATUS       decoder_status;
       READER_STATS         reader_stats;
 

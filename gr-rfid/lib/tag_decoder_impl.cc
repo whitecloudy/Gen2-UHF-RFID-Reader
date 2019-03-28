@@ -60,11 +60,6 @@ namespace gr
         if(ys.size() == 0)
         {
           log << "│ No received signal.." << std::endl;
-          reader_state-> n_samples_to_ungate = (RN16_BITS + TAG_PREAMBLE_BITS + EXTRA_BITS) * n_samples_TAG_BIT;
-          reader_state->gate_status = GATE_CLOSED;
-          reader_state->status = RUNNING;
-          log<<"gate free\n";
-          reader_state->decoder_status = DECODER_DECODE_RN16;
           goto_next_slot();
         }
         else
@@ -251,11 +246,7 @@ namespace gr
       // go to the next state
       log << std::endl << "├──────────────────────────────────────────────────" << std::endl;
       std::cout << "RN16 decoded | ";
-      reader_state->n_samples_to_ungate = (EPC_BITS + TAG_PREAMBLE_BITS + EXTRA_BITS) * n_samples_TAG_BIT;
-      reader_state->gate_status = GATE_CLOSED;
-      reader_state->status = RUNNING;
-      log<<"gate free_RN16\n";
-      reader_state->decoder_status = DECODER_DECODE_EPC;
+
       reader_state->gen2_logic_status = SEND_ACK;
     }
 
@@ -300,11 +291,6 @@ namespace gr
         std::cout << "\t\t\t\t\tCRC FAIL!!";
       }
 
-      reader_state->n_samples_to_ungate = (RN16_BITS + TAG_PREAMBLE_BITS + EXTRA_BITS) * n_samples_TAG_BIT;
-      reader_state->gate_status = GATE_CLOSED;
-      reader_state->status = RUNNING;
-      log<<"gate free_EPC\n";
-      reader_state->decoder_status = DECODER_DECODE_RN16;
       goto_next_slot();
     }
 

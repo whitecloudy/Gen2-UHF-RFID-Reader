@@ -252,6 +252,7 @@ namespace gr
 
         memcpy(&out[written], &cw_ack[0], sizeof(float) * cw_ack.size() );
         written += cw_ack.size();
+        reader_state->gate_status = GATE_CLOSED;
         reader_state->gen2_logic_status = SEND_QUERY;
         break;
 
@@ -283,6 +284,9 @@ namespace gr
         case SEND_QUERY:
         //GR_LOG_INFO(d_debug_logger, "QUERY");
         //GR_LOG_INFO(d_debug_logger, "INVENTORY ROUND : " << reader_state->reader_stats.cur_inventory_round << " SLOT NUMBER : " << reader_state->reader_stats.cur_slot_number);
+        reader_state->gate_status = GATE_SEEK_RN16;
+        reader_state->decoder_status = DECODER_DECODE_RN16;
+
         log.open(log_file_path, std::ios::app);
         log << std::endl << "┌──────────────────────────────────────────────────" << std::endl;
         log << "│ Inventory Round: " << reader_state->reader_stats.cur_inventory_round << " | Slot Number: " << reader_state->reader_stats.cur_slot_number << std::endl;
@@ -326,6 +330,8 @@ namespace gr
         //GR_LOG_INFO(d_debug_logger, "SEND ACK");
         if (ninput_items[0] == RN16_BITS - 1)
         {
+          reader_state->gate_status = GATE_SEEK_EPC;
+          reader_state->decoder_status = DECODER_DECODE_EPC;
           reader_state->reader_stats.n_ack_sent +=1;
 
           gen_ack_bits(in);
@@ -370,6 +376,9 @@ namespace gr
         case SEND_QUERY_REP:
         //GR_LOG_INFO(d_debug_logger, "SEND QUERY_REP");
         //GR_LOG_INFO(d_debug_logger, "INVENTORY ROUND : " << reader_state->reader_stats.cur_inventory_round << " SLOT NUMBER : " << reader_state->reader_stats.cur_slot_number);
+        reader_state->gate_status = GATE_SEEK_RN16;
+        reader_state->decoder_status = DECODER_DECODE_RN16;
+
         log.open(log_file_path, std::ios::app);
         log << "│ Inventory Round: " << reader_state->reader_stats.cur_inventory_round << " | Slot Number: " << reader_state->reader_stats.cur_slot_number << std::endl;
         log.close();
