@@ -178,6 +178,8 @@ namespace gr
       int consumed = 0;
       int written = 0;
 
+      float tp[2]={1,0};
+
       if(reader_state->gen2_logic_status != IDLE)
       {
         log.open(log_file_path, std::ios::app);
@@ -199,7 +201,6 @@ namespace gr
           log << "EPC= " << EPC_D / sample_d << std::endl << std::endl;
 
           transmit(out, &written, cw_ack);
-
           reader_state->gen2_logic_status = IDLE;
         }
         else if(reader_state->gen2_logic_status == SEND_QUERY)
@@ -217,6 +218,8 @@ namespace gr
           transmit(out, &written, preamble);
           gen_query_bits();
           transmit_bits(out, &written, query_bits);
+
+
           transmit(out, &written, cw_query);
 
           log << "│ Send Query | Q= " << FIXED_Q << std::endl;

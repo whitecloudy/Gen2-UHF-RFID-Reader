@@ -24,6 +24,7 @@
 #include <rfid/tag_decoder.h>
 #include <vector>
 #include "rfid/global_vars.h"
+#include "IPC_controller_forRN16.h"
 #include <time.h>
 #include <numeric>
 #include <fstream>
@@ -31,9 +32,7 @@
 //#define DEBUG_TAG_DECODER_IMPL_INPUT
 //#define DEBUG_TAG_DECODER_IMPL_PREAMBLE
 //#define DEBUG_TAG_DECODER_IMPL_SAMPLE
-
-#define __DEBUG_LOG__
-
+//define __DEBUG_LOG__
 
 namespace gr
 {
@@ -45,6 +44,7 @@ namespace gr
         float n_samples_TAG_BIT;
         int s_rate;
         char * char_bits;
+        IPC_controller_forRN16 ipc;
 
         class sample_information
         {

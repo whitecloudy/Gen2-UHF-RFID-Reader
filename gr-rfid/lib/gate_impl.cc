@@ -27,7 +27,6 @@
 #include <sys/time.h>
 #include <stdio.h>
 
-
 #define AMP_LOWBOUND (0.01) //this will let us find the lowest bound
 #define MIN_PULSE (5)
 #define T1_LEN (400)
@@ -39,6 +38,7 @@
 #define MAX_SEARCH_TRACK (10000)
 #define MAX_SEARCH_READY (8000)
 #define MAX_SEARCH_SEEK  (4000)
+
 namespace gr
 {
   namespace rfid
@@ -57,7 +57,6 @@ namespace gr
     : gr::block("gate",
     gr::io_signature::make(1, 1, sizeof(gr_complex)),
     gr::io_signature::make(1, 1, sizeof(gr_complex))),
-
     n_samples(0), avg_dc(0,0), num_pulses(0)
     {
       n_samples_T1       = T1_D       * (sample_rate / pow(10,6));
@@ -69,14 +68,24 @@ namespace gr
 
     }
 
-    gate_impl::~gate_impl(){}
+    /*
+    * Our virtual destructor.
+    */
+    gate_impl::~gate_impl()
+    {
+    }
 
-    void gate_impl::forecast (int noutput_items, gr_vector_int &ninput_items_required)
+    void
+    gate_impl::forecast (int noutput_items, gr_vector_int &ninput_items_required)
     {
       ninput_items_required[0] = noutput_items;
     }
 
-    int gate_impl::general_work (int noutput_items, gr_vector_int &ninput_items, gr_vector_const_void_star &input_items, gr_vector_void_star &output_items)
+    int
+    gate_impl::general_work (int noutput_items,
+      gr_vector_int &ninput_items,
+      gr_vector_const_void_star &input_items,
+      gr_vector_void_star &output_items)
     {
       const gr_complex *in = (const gr_complex *) input_items[0];
       gr_complex *out = (gr_complex *) output_items[0];
@@ -93,7 +102,10 @@ namespace gr
       {
         for(int i=0 ; i<ninput_items[0] ; i++)
         {
-          gr_complex sample = in[i];          
+          gr_complex sample = in[i];
+          char data[8];
+          memcpy(data, &sample, 8);
+          
 
           if(reader_state->gate_status == GATE_START)
           {
@@ -188,6 +200,7 @@ namespace gr
             {//log<<std::endl;
               log<<"GATE TRACK"<<std::endl;
               log<<"abs value : "<<abs(sample)<<std::endl;
+              
               if(signal_state == POS_EDGE) log<<"signal_state : POS_EDGE"<<std::endl;
               else if(signal_state == NEG_EDGE)  log<<"signal_state : NEG_EDGE"<<std::endl;
               log<<"num pulse : "<<num_pulses<<std::endl;
@@ -195,13 +208,11 @@ namespace gr
               number_samples_consumed = i-1;
               break;
             }//og<<sample<<" ";
-
             if((signal_state == NEG_EDGE) && (abs(sample) > amp_pos_threshold))
             {
               signal_state = POS_EDGE;
             }
             else if((signal_state == POS_EDGE) && (abs(sample) < amp_neg_threshold))
-
             {
               signal_state = NEG_EDGE;
               if(++num_pulses > MIN_PULSE)
@@ -223,15 +234,12 @@ namespace gr
               number_samples_consumed = i-1;
               break;
             }//log<<sample<<" ";
-
-
             if(abs(sample) < amp_neg_threshold){ 
               n_samples = 0;
             }else if(n_samples++ > T1_LEN)
             {//log<<std::endl;
               log << "│ Gate open!" << std::endl;
               log << "├──────────────────────────────────────────────────" << std::endl;
-
               reader_state->gate_status = GATE_OPEN;
               n_samples = 0;
               continue;
@@ -241,13 +249,13 @@ namespace gr
           {
             if(++n_samples > reader_state->n_samples_to_ungate)
             {
+              log<<avg_iq<<std::endl;
               reader_state->gate_status = GATE_CLOSED;
               number_samples_consumed = i-1;
 
               break;
             }
-
-            out[written++] = sample - avg_iq;
+           out[written++] = sample - avg_iq;
           }
         }
       }
@@ -261,6 +269,7 @@ namespace gr
     void gate_impl::gate_fail(void)
     {
       log.open(log_file_path, std::ios::app);
+      ipc.send_failed();
 
       log << "│ Gate search FAIL!" << std::endl;
       std::cout << "Gate FAIL!!";
