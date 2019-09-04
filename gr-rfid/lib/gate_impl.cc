@@ -39,7 +39,6 @@
 #define MAX_SEARCH_TRACK (10000)
 #define MAX_SEARCH_READY (8000)
 #define MAX_SEARCH_SEEK  (4000)
-
 namespace gr
 {
   namespace rfid
