@@ -122,16 +122,35 @@ namespace gr
 
       query_bits.resize(0);
       query_bits.insert(query_bits.end(), &QUERY_CODE[0], &QUERY_CODE[4]);
+      query_bits.push_back(0);
+      query_bits.push_back(0);
+      query_bits.push_back(0);
 
-      query_bits.push_back(DR);
-      query_bits.insert(query_bits.end(), &M[0], &M[2]);
-      query_bits.push_back(TREXT);
-      query_bits.insert(query_bits.end(), &SEL[0], &SEL[2]);
-      query_bits.insert(query_bits.end(), &SESSION[0], &SESSION[2]);
-      query_bits.push_back(TARGET);
+      uint16_t data =  reader_state->reader_stats.cur_inventory_round;
+      uint16_t mask = 0x8000;
 
-      query_bits.insert(query_bits.end(), &Q_VALUE[FIXED_Q][0], &Q_VALUE[FIXED_Q][4]);
-      crc_append(query_bits);
+      for(int i = 0; i<16; i++){
+        if(data & mask)
+          query_bits.push_back(1);
+        else
+          query_bits.push_back(0);
+
+        mask/=2;
+      }
+
+
+
+      /*
+         query_bits.push_back(DR);
+         query_bits.insert(query_bits.end(), &M[0], &M[2]);
+         query_bits.push_back(TREXT);
+         query_bits.insert(query_bits.end(), &SEL[0], &SEL[2]);
+         query_bits.insert(query_bits.end(), &SESSION[0], &SESSION[2]);
+         query_bits.push_back(TARGET);
+
+         query_bits.insert(query_bits.end(), &Q_VALUE[FIXED_Q][0], &Q_VALUE[FIXED_Q][4]);
+         crc_append(query_bits);
+         */
     }
 
     void reader_impl::gen_ack_bits(const float * in)
@@ -218,8 +237,6 @@ namespace gr
           transmit(out, &written, preamble);
           gen_query_bits();
           transmit_bits(out, &written, query_bits);
-
-
           transmit(out, &written, cw_query);
 
           log << "│ Send Query | Q= " << FIXED_Q << std::endl;
