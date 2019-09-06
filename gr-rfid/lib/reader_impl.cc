@@ -122,14 +122,11 @@ namespace gr
 
       query_bits.resize(0);
       query_bits.insert(query_bits.end(), &QUERY_CODE[0], &QUERY_CODE[4]);
-      query_bits.push_back(0);
-      query_bits.push_back(0);
-      query_bits.push_back(0);
-
+      
       uint16_t data =  reader_state->reader_stats.cur_inventory_round;
-      uint16_t mask = 0x8000;
+      uint16_t mask = 0x0800;
 
-      for(int i = 0; i<16; i++){
+      for(int i = 0; i<12; i++){
         if(data & mask)
           query_bits.push_back(1);
         else
@@ -137,9 +134,9 @@ namespace gr
 
         mask/=2;
       }
-
-
-
+      query_bits.push_back(0);
+      
+      crc_append(query_bits);
       /*
          query_bits.push_back(DR);
          query_bits.insert(query_bits.end(), &M[0], &M[2]);
@@ -149,7 +146,6 @@ namespace gr
          query_bits.push_back(TARGET);
 
          query_bits.insert(query_bits.end(), &Q_VALUE[FIXED_Q][0], &Q_VALUE[FIXED_Q][4]);
-         crc_append(query_bits);
          */
     }
 
