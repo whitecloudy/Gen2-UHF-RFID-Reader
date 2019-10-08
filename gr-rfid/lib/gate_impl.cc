@@ -269,7 +269,7 @@ namespace gr
     void gate_impl::gate_fail(void)
     {
       log.open(log_file_path, std::ios::app);
-      ipc.send_failed();
+      //ipc.send_failed();
 
       log << "│ Gate search FAIL!" << std::endl;
       std::cout << "Gate FAIL!!";

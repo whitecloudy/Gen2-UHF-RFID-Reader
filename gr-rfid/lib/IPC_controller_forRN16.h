@@ -15,6 +15,7 @@ private:
     float avg_corr;
     float avg_i;
     float avg_q;
+    unsigned int round;
   } data;
 
 public:
@@ -24,8 +25,9 @@ public:
   int send_avg_corr(std::vector<float>, double);
   int send_avg_corr(std::vector<float>, std::complex<float>);
   int send_avg_corr(std::vector<float>, double, std::complex<float>);
+  int send_avg_corr(std::vector<float>, double, std::complex<float>, unsigned int);
 
-  int send_failed(void);
+  int send_failed(int);
 
 };
 

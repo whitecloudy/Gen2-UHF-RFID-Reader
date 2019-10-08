@@ -13,6 +13,7 @@ int IPC_controller_forRN16::send_avg_corr(std::vector<float> RN16, double avg_co
   }
 
   data.avg_corr = avg_corr;
+  data.round = 0;
 
   data_send(&data, sizeof(struct avg_corr_data));
 
@@ -29,6 +30,7 @@ int IPC_controller_forRN16::send_avg_corr(std::vector<float> RN16, std::complex<
   data.avg_corr = norm(avg_corr);
   data.avg_i = avg_corr.real();
   data.avg_q = avg_corr.imag();
+  data.round = 0;
 
   data_send(&data, sizeof(struct avg_corr_data));
 
@@ -46,6 +48,7 @@ int IPC_controller_forRN16::send_avg_corr(std::vector<float> RN16,double avg_cor
   data.avg_corr = avg_corr_norm;
   data.avg_i = avg_corr.real();
   data.avg_q = avg_corr.imag();
+  data.round = 0;
 
   data_send(&data, sizeof(struct avg_corr_data));
 
@@ -55,8 +58,32 @@ int IPC_controller_forRN16::send_avg_corr(std::vector<float> RN16,double avg_cor
 }
 
 
-int IPC_controller_forRN16::send_failed(void){
+
+int IPC_controller_forRN16::send_avg_corr(std::vector<float> RN16,double avg_corr_norm, std::complex<float> avg_corr, unsigned int round_num){
+  data.successFlag = 1;
+  for(int i = 0; i<16; i++){
+    data.RN16[i] = RN16[i];
+  }
+
+  data.avg_corr = avg_corr_norm;
+  data.avg_i = avg_corr.real();
+  data.avg_q = avg_corr.imag();
+  data.round = round_num;
+
+  data_send(&data, sizeof(struct avg_corr_data));
+
+  wait_ack();
+
+  return 0;
+}
+
+
+
+
+int IPC_controller_forRN16::send_failed(int round){
   data.successFlag = 0;
+  data.round = round;
+
   data_send(&data, sizeof(struct avg_corr_data));
 
   wait_ack();
