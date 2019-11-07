@@ -5,7 +5,7 @@
 
 #include "tag_decoder_impl.h"
 
-#define SHIFT_SIZE 2  // used in tag_detection
+#define SHIFT_SIZE 5  // used in tag_detection
 
 #define FM0_MASKS_LENGTH  4
 #define TAG_PREAMBLE_MASKS_LENGTH  12
@@ -66,7 +66,7 @@ namespace gr
         }
 
         // get max correlation value for ith start point
-        float corr = std::abs(corr_temp/standard_deviation);
+        float corr = std::abs(corr_temp)/standard_deviation;
 
         // compare with current max correlation value
         if(corr > max_corr)
@@ -89,12 +89,15 @@ namespace gr
       else return -1;
     }
 
+    static int correct_bit = 0;
 
     std::vector<float> tag_decoder_impl::tag_detection(sample_information* ys, int index, int n_expected_bit)
       // This method decodes n_expected_bit of data by using previous methods, and returns the vector of the decoded data.
       // index: start point of "data bit", do not decrease half bit!
     {
       std::vector<float> decoded_bits;
+
+      std::ofstream debugging("code_log/"+current_round_slot+".csv",std::ios::out);
 
       int mask_level = 1;
       int shift = 0;
@@ -113,6 +116,11 @@ namespace gr
         std::vector<std::complex<double>> corr_result(2);
         corr_result[0] = mask_correlation(ys, FM0_MASKS[0], FM0_MASKS_LENGTH,idx-SHIFT_SIZE, mask_level);
         corr_result[1] = mask_correlation(ys, FM0_MASKS[1], FM0_MASKS_LENGTH,idx-SHIFT_SIZE, mask_level);
+
+        if(corr_result[0].imag() == 0 ||corr_result[0].real() == 0 ||corr_result[1].real() == 0 ||corr_result[1].imag() == 0){
+          std::cerr << "Zero Error detected | ";
+        }
+
         if(std::abs(corr_result[0]) > std::abs(corr_result[1])){
           max_corr = corr_result[0];
           max_bit = 0;
@@ -120,21 +128,24 @@ namespace gr
           max_corr = corr_result[1];
           max_bit = 1;
         }
-        curr_shift = -2;
-
+        curr_shift = -SHIFT_SIZE;
 
         //calculate new corr value by shifting left to right one sample each
         for(int j=-SHIFT_SIZE ; j<SHIFT_SIZE ; j++)
         {
           corr_result[0] = mask_shift_one_sample(ys, FM0_MASKS[0], FM0_MASKS_LENGTH, corr_result[0], idx+j, mask_level);
           corr_result[1] = mask_shift_one_sample(ys, FM0_MASKS[1], FM0_MASKS_LENGTH, corr_result[1], idx+j, mask_level);
+          
+          if(corr_result[0].imag() == 0 ||corr_result[0].real() == 0 ||corr_result[1].real() == 0 ||corr_result[1].imag() == 0){
+            std::cerr << "Zero Error detected"<<std::endl;
+          }
 
           //Find the Biggest Correlation value
           for(int k=0; k<=1; k++){
             if(std::abs(corr_result[k]) > std::abs(max_corr)){
               max_corr = corr_result[k];
               max_bit = k;
-              curr_shift = j;
+              curr_shift = j+1;
             }
           }
         }
@@ -164,19 +175,34 @@ namespace gr
       ys->set_corr(max_corr_sum/n_expected_bit);
       ys->set_complex_corr(max_complex_corr_sum/(float)n_expected_bit);
 
+
+
+      int data = 0;
+      for(int i = 0; i<16; i++){
+        data = data << 1;
+        data -= data & 1;
+        if(decoded_bits[i] > 0.5){
+          data += 1;
+        }
+        //std::cout<<in[i];
+      }
+
+      if(data == 0xAAAA)
+        correct_bit++;
+      std::cout<<correct_bit<<" | ";
+
       return decoded_bits;
     }
 
 
     std::complex<double> tag_decoder_impl::mask_correlation(sample_information * ys, const float mask_data[],const int mask_length, int index, int mask_level){
-      std::vector<float> mask(mask_data, mask_data+mask_length-1);
-      
+
       std::complex<double> result(0.0,0.0);
 
 
       for(int i_mask = 0; i_mask < mask_length; i_mask++){
-        for(int i_sam = (int)n_samples_TAG_BIT/2 * i_mask; i_sam < ((int)n_samples_TAG_BIT/2 * (i_mask + 1)); i_sam++){
-          result += (ys->in(index + i_sam) * mask[i_mask]);
+        for(int i_sam = ((int)n_samples_TAG_BIT/2 * i_mask); i_sam < ((int)n_samples_TAG_BIT/2 * (i_mask + 1)); i_sam++){
+          result += (ys->in(index + i_sam) * mask_data[i_mask]);
         }
       }
 
@@ -186,16 +212,15 @@ namespace gr
     }
 
     std::complex<double> tag_decoder_impl::mask_shift_one_sample(sample_information * ys, const float mask_data[], const int mask_length, std::complex<double> prev_result, int prev_index, int mask_level){
-      std::vector<float> mask(mask_data, mask_data+mask_length-1);
 
       std::complex<double> result(0.0,0.0);
 
-      result -= ys->in(prev_index) * mask[0];
-      result += ys->in(prev_index + ((int)n_samples_TAG_BIT/2 * (mask_length))) * mask[mask_length - 1];
+      result -= ys->in(prev_index) * mask_data[0];
+      result += ys->in(prev_index + ((int)n_samples_TAG_BIT/2 * (mask_length))) * mask_data[mask_length - 1];
 
       for(int i_mask = 1; i_mask < mask_length; i_mask++){
         int i_sam = (int)n_samples_TAG_BIT/2 * i_mask;
-        result += (ys->in(prev_index + i_sam) * (mask[i_mask-1] - mask[i_mask]));
+        result += (ys->in(prev_index + i_sam) * (mask_data[i_mask-1] - mask_data[i_mask]));
       }
 
       result *= mask_level;
