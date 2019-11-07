@@ -78,6 +78,8 @@ namespace gr
       else return -1;
     }
 
+    static int correct = 0;
+
     std::vector<float> tag_decoder_impl::tag_detection(sample_information* ys, int index, int n_expected_bit)
       // This method decodes n_expected_bit of data by using previous methods, and returns the vector of the decoded data.
       // index: start point of "data bit", do not decrease half bit!
@@ -138,6 +140,20 @@ namespace gr
 
       ys->set_corr(max_corr_sum/n_expected_bit);
       ys->set_complex_corr(max_complex_corr_sum/(float)n_expected_bit);
+
+      int data = 0;
+
+      for(int i = 0; i<16; i++){
+        data = data<<1;
+        data -= (data&1);
+        if(decoded_bits[i] == 1)
+          data+=1;
+      }
+
+      if(data == 0xAAAA)
+        correct++;
+
+      std::cout<< correct << " | ";
 
       return decoded_bits;
     }
