@@ -41,38 +41,46 @@ namespace gr
       gr_complex corr_temp(0.0f,0.0f);
       float max_corr = 0.0f;
       int max_index = 0;
+      float max_stddev = 0.0;
 
       // compare all samples with sliding
       for(int i=0 ; i<ys->total_size()-(n_samples_TAG_BIT*(TAG_PREAMBLE_BITS+n_expected_bit)) ; i++)  // i: start point
       {
-        // calculate average_amp (threshold)
-        float average_amp = 0.0f;
-        for(int j=0 ; j<win_size ; j++)
-          average_amp += ys->norm_in(i+j);
-        average_amp /= win_size;
-
-        // calculate normalize_factor
-        float standard_deviation = 0.0f;
-        for(int j=0 ; j<win_size ; j++)
-          standard_deviation += pow(ys->norm_in(i+j) - average_amp, 2);
-        standard_deviation /= win_size;
-        standard_deviation = sqrt(standard_deviation);
-
+        
         // calculate correlation value
         if(i==0){
-          corr_temp = mask_correlation(ys, TAG_PREAMBLE_MASKS, TAG_PREAMBLE_MASKS_LENGTH);
+          corr_temp = mask_correlation(ys, TAG_PREAMBLE_MASKS, TAG_PREAMBLE_MASKS_LENGTH, 0 , 1);
         }else{
-          corr_temp = mask_shift_one_sample(ys,TAG_PREAMBLE_MASKS, TAG_PREAMBLE_MASKS_LENGTH, corr_temp, i-1);
+          corr_temp = mask_shift_one_sample(ys,TAG_PREAMBLE_MASKS, TAG_PREAMBLE_MASKS_LENGTH, corr_temp, i-1, 1);
         }
 
         // get max correlation value for ith start point
-        float corr = std::abs(corr_temp)/standard_deviation;
+        float corr = std::abs(corr_temp);
 
         // compare with current max correlation value
         if(corr > max_corr)
         {
+          // calculate average_amp (threshold)
+          std::complex<float> average_amp(0.0,0.0);
+          for(int j=0 ; j<win_size ; j++)
+            average_amp += ys->in(i+j);
+          average_amp /= win_size;
+
+          // calculate normalize_factor
+          std::complex<float> standard_deviation(0.0,0.0);
+          for(int j=0 ; j<win_size ; j++){
+            standard_deviation.real(standard_deviation.real() + pow(ys->in(i+j).real() - average_amp.real(), 2));
+            standard_deviation.imag(standard_deviation.imag() + pow(ys->in(i+j).imag() - average_amp.imag(), 2));
+
+          }
+
+          standard_deviation /= win_size;
+          standard_deviation.real(pow(standard_deviation.real(),0.5));
+          standard_deviation.imag(pow(standard_deviation.imag(),0.5));
+
           max_corr = corr;
           max_index = i;
+          max_stddev = std::abs(standard_deviation);
         }
       }
 
@@ -85,7 +93,7 @@ namespace gr
 
 
       // check if correlation value exceeds threshold
-      if(max_corr > threshold) return max_index + win_size;
+      if((max_corr/max_stddev) > threshold) return max_index + win_size;
       else return -1;
     }
 
@@ -118,7 +126,7 @@ namespace gr
         corr_result[1] = mask_correlation(ys, FM0_MASKS[1], FM0_MASKS_LENGTH,idx-SHIFT_SIZE, mask_level);
 
         if(corr_result[0].imag() == 0 ||corr_result[0].real() == 0 ||corr_result[1].real() == 0 ||corr_result[1].imag() == 0){
-          std::cerr << "Zero Error detected | ";
+          std::cerr << "Zero Error detected (" << corr_result[0].real() <<", "<<corr_result[0].imag()<<"), ("<< corr_result[0].real() <<", "<<corr_result[0].imag()<<"), "<<-SHIFT_SIZE<<" | ";
         }
 
         if(std::abs(corr_result[0]) > std::abs(corr_result[1])){
@@ -135,9 +143,9 @@ namespace gr
         {
           corr_result[0] = mask_shift_one_sample(ys, FM0_MASKS[0], FM0_MASKS_LENGTH, corr_result[0], idx+j, mask_level);
           corr_result[1] = mask_shift_one_sample(ys, FM0_MASKS[1], FM0_MASKS_LENGTH, corr_result[1], idx+j, mask_level);
-          
+
           if(corr_result[0].imag() == 0 ||corr_result[0].real() == 0 ||corr_result[1].real() == 0 ||corr_result[1].imag() == 0){
-            std::cerr << "Zero Error detected"<<std::endl;
+            std::cerr << "Zero Error detected (" << corr_result[0].real() <<", "<<corr_result[0].imag()<<"), ("<< corr_result[0].real() <<", "<<corr_result[0].imag()<<"), "<<j+1<<" | ";
           }
 
           //Find the Biggest Correlation value
@@ -198,7 +206,6 @@ namespace gr
     std::complex<double> tag_decoder_impl::mask_correlation(sample_information * ys, const float mask_data[],const int mask_length, int index, int mask_level){
 
       std::complex<double> result(0.0,0.0);
-
 
       for(int i_mask = 0; i_mask < mask_length; i_mask++){
         for(int i_sam = ((int)n_samples_TAG_BIT/2 * i_mask); i_sam < ((int)n_samples_TAG_BIT/2 * (i_mask + 1)); i_sam++){
