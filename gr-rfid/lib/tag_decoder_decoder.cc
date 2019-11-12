@@ -126,7 +126,7 @@ namespace gr
         corr_result[1] = mask_correlation(ys, FM0_MASKS[1], FM0_MASKS_LENGTH,idx-SHIFT_SIZE, mask_level);
 
         if(corr_result[0].imag() == 0 ||corr_result[0].real() == 0 ||corr_result[1].real() == 0 ||corr_result[1].imag() == 0){
-          std::cerr << "Zero Error detected (" << corr_result[0].real() <<", "<<corr_result[0].imag()<<"), ("<< corr_result[0].real() <<", "<<corr_result[0].imag()<<"), "<<-SHIFT_SIZE<<" | ";
+          std::cerr << "Zero Error detected (" << corr_result[0].real() <<", "<<corr_result[0].imag()<<"), ("<< corr_result[1].real() <<", "<<corr_result[1].imag()<<"), "<<-SHIFT_SIZE<<" | ";
         }
 
         if(std::abs(corr_result[0]) > std::abs(corr_result[1])){
@@ -145,7 +145,7 @@ namespace gr
           corr_result[1] = mask_shift_one_sample(ys, FM0_MASKS[1], FM0_MASKS_LENGTH, corr_result[1], idx+j, mask_level);
 
           if(corr_result[0].imag() == 0 ||corr_result[0].real() == 0 ||corr_result[1].real() == 0 ||corr_result[1].imag() == 0){
-            std::cerr << "Zero Error detected (" << corr_result[0].real() <<", "<<corr_result[0].imag()<<"), ("<< corr_result[0].real() <<", "<<corr_result[0].imag()<<"), "<<j+1<<" | ";
+            std::cerr << "Zero Error detected (" << corr_result[0].real() <<", "<<corr_result[0].imag()<<"), ("<< corr_result[1].real() <<", "<<corr_result[1].imag()<<"), "<<j+1<<" | ";
           }
 
           //Find the Biggest Correlation value
@@ -191,12 +191,23 @@ namespace gr
         data -= data & 1;
         if(decoded_bits[i] > 0.5){
           data += 1;
-        }
-        //std::cout<<in[i];
+        }        //std::cout<<in[i];
       }
 
       if(data == 0xAAAA)
         correct_bit++;
+      else{
+        data = (data ^ 0xAAAA);
+        int b_c = 0;
+        int data1 = data;
+        for(int i = 0; i<16; i++){
+          if(data1 % 2 == 1)
+            b_c++;
+          data1 /= 2;
+        }
+        std::cout << std::hex<<data<<std::dec<<", "<<b_c<<" | ";
+      }
+
       std::cout<<correct_bit<<" | ";
 
       return decoded_bits;
