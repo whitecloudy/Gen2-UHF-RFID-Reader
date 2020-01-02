@@ -123,8 +123,6 @@ namespace gr
           log << "│ Preamble detected!" << std::endl;
 #endif
 
-          
-
 #ifdef DEBUG_TAG_DECODER_IMPL_PREAMBLE
           debug_preamble(&ys, mode, current_round_slot, index);
 #endif
@@ -166,7 +164,6 @@ namespace gr
       for(int i=0 ; i<RN16_bits.size() ; i++)
       {
         out[written++] = RN16_bits[i];
-
 #ifdef __DEBUG_LOG__
         if(i % 4 == 0)
         {

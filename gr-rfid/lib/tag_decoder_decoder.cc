@@ -39,9 +39,9 @@ namespace gr
       float threshold = n_samples_TAG_BIT * 4;  // threshold verifing correlation value
 
       gr_complex corr_temp(0.0f,0.0f);
-      float max_corr = 0.0f;
+      gr_complex max_corr = 0.0f;
       int max_index = 0;
-      float max_stddev = 0.0;
+      gr_complex max_stddev = 0.0;
 
       // compare all samples with sliding
       for(int i=0 ; i<ys->total_size()-(n_samples_TAG_BIT*(TAG_PREAMBLE_BITS+n_expected_bit)) ; i++)  // i: start point
@@ -55,10 +55,10 @@ namespace gr
         }
 
         // get max correlation value for ith start point
-        float corr = std::abs(corr_temp);
+        std::complex<double> corr = corr_temp;
 
         // compare with current max correlation value
-        if(corr > max_corr)
+        if(std::abs(corr) > std::abs(max_corr))
         {
           // calculate average_amp (threshold)
           std::complex<float> average_amp(0.0,0.0);
@@ -80,9 +80,10 @@ namespace gr
 
           max_corr = corr;
           max_index = i;
-          max_stddev = std::abs(standard_deviation);
+          max_stddev = standard_deviation;
         }
       }
+
 
 #ifdef __DEBUG__
       debug_log << "threshold= " << threshold << std::endl;
@@ -91,9 +92,11 @@ namespace gr
       debug_log << "sample index= " << max_index + win_size << std::endl;
 #endif
 
+      max_corr.real(max_corr.real()/max_stddev.real());
+      max_corr.imag(max_corr.imag()/max_stddev.imag());
 
       // check if correlation value exceeds threshold
-      if((max_corr/max_stddev) > threshold) return max_index + win_size;
+      if((std::abs(max_corr)) > threshold) return max_index + win_size;
       else return -1;
     }
 
@@ -105,7 +108,6 @@ namespace gr
     {
       std::vector<float> decoded_bits;
 
-      std::ofstream debugging("code_log/"+current_round_slot+".csv",std::ios::out);
 
       int mask_level = 1;
       int shift = 0;
@@ -115,45 +117,33 @@ namespace gr
       for(int i=0 ; i<n_expected_bit ; i++)
       {
         int idx = index + i*n_samples_TAG_BIT + shift - n_samples_TAG_BIT/2;  // start point of decoding bit with shifting
-        std::complex<double> max_corr;
+        std::complex<double> max_corr(0,0);
         int max_bit;
         int curr_shift;
 
 
         //culculate left most shifted correlation value
-        std::vector<std::complex<double>> corr_result(2);
-        corr_result[0] = mask_correlation(ys, FM0_MASKS[0], FM0_MASKS_LENGTH,idx-SHIFT_SIZE, mask_level);
-        corr_result[1] = mask_correlation(ys, FM0_MASKS[1], FM0_MASKS_LENGTH,idx-SHIFT_SIZE, mask_level);
-
-        if(corr_result[0].imag() == 0 ||corr_result[0].real() == 0 ||corr_result[1].real() == 0 ||corr_result[1].imag() == 0){
-          std::cerr << "Zero Error detected (" << corr_result[0].real() <<", "<<corr_result[0].imag()<<"), ("<< corr_result[1].real() <<", "<<corr_result[1].imag()<<"), "<<-SHIFT_SIZE<<" | ";
-        }
-
-        if(std::abs(corr_result[0]) > std::abs(corr_result[1])){
-          max_corr = corr_result[0];
-          max_bit = 0;
-        }else{
-          max_corr = corr_result[1];
-          max_bit = 1;
-        }
-        curr_shift = -SHIFT_SIZE;
+        std::vector<std::complex<double>> corr_result(2), result(2);
 
         //calculate new corr value by shifting left to right one sample each
-        for(int j=-SHIFT_SIZE ; j<SHIFT_SIZE ; j++)
+        for(int j=-SHIFT_SIZE ; j<=SHIFT_SIZE ; j++)
         {
-          corr_result[0] = mask_shift_one_sample(ys, FM0_MASKS[0], FM0_MASKS_LENGTH, corr_result[0], idx+j, mask_level);
-          corr_result[1] = mask_shift_one_sample(ys, FM0_MASKS[1], FM0_MASKS_LENGTH, corr_result[1], idx+j, mask_level);
-
-          if(corr_result[0].imag() == 0 ||corr_result[0].real() == 0 ||corr_result[1].real() == 0 ||corr_result[1].imag() == 0){
-            std::cerr << "Zero Error detected (" << corr_result[0].real() <<", "<<corr_result[0].imag()<<"), ("<< corr_result[1].real() <<", "<<corr_result[1].imag()<<"), "<<j+1<<" | ";
+          if(j == -SHIFT_SIZE){
+            corr_result[0] = mask_correlation(ys, FM0_MASKS[0], FM0_MASKS_LENGTH, idx+j, mask_level);
+            corr_result[1] = mask_correlation(ys, FM0_MASKS[1], FM0_MASKS_LENGTH, idx+j, mask_level);
+          }else{
+            corr_result[0] = mask_shift_one_sample(ys, FM0_MASKS[0], FM0_MASKS_LENGTH, corr_result[0], idx+j, mask_level);
+            corr_result[1] = mask_shift_one_sample(ys, FM0_MASKS[1], FM0_MASKS_LENGTH, corr_result[1], idx+j, mask_level);
           }
 
           //Find the Biggest Correlation value
           for(int k=0; k<=1; k++){
             if(std::abs(corr_result[k]) > std::abs(max_corr)){
               max_corr = corr_result[k];
+              result[0] = corr_result[0];
+              result[1] = corr_result[1];
               max_bit = k;
-              curr_shift = j+1;
+              curr_shift = j;
             }
           }
         }
@@ -194,7 +184,7 @@ namespace gr
         }        //std::cout<<in[i];
       }
 
-      if(data == 0xAAAA)
+     if(data == 0xAAAA)
         correct_bit++;
       else{
         data = (data ^ 0xAAAA);
@@ -206,6 +196,7 @@ namespace gr
           data1 /= 2;
         }
         std::cout << std::hex<<data<<std::dec<<", "<<b_c<<" | ";
+
       }
 
       std::cout<<correct_bit<<" | ";
@@ -229,12 +220,13 @@ namespace gr
       return result;
     }
 
-    std::complex<double> tag_decoder_impl::mask_shift_one_sample(sample_information * ys, const float mask_data[], const int mask_length, std::complex<double> prev_result, int prev_index, int mask_level){
+    std::complex<double> tag_decoder_impl::mask_shift_one_sample(sample_information * ys, const float mask_data[], const int mask_length, std::complex<double> prev_result, int index, int mask_level){
+      int prev_index = index - 1;
 
       std::complex<double> result(0.0,0.0);
 
-      result -= ys->in(prev_index) * mask_data[0];
-      result += ys->in(prev_index + ((int)n_samples_TAG_BIT/2 * (mask_length))) * mask_data[mask_length - 1];
+      result -= (ys->in(prev_index) * mask_data[0]);
+      result += (ys->in(prev_index + ((int)n_samples_TAG_BIT/2 * (mask_length))) * mask_data[mask_length - 1]);
 
       for(int i_mask = 1; i_mask < mask_length; i_mask++){
         int i_sam = (int)n_samples_TAG_BIT/2 * i_mask;
