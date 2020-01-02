@@ -113,7 +113,7 @@ namespace gr
 
               number_samples_consumed = i-1;
 
-              avg_iq = gr_complex(0.0,0.0);
+              avg_iq = gr_complex(0,0);
               iq_count = 0;
               n_samples = 0;
               amp_pos_threshold = 0;
@@ -128,7 +128,7 @@ namespace gr
             log << "│ Gate seek RN16.." << std::endl;
             reader_state->n_samples_to_ungate = (RN16_BITS + TAG_PREAMBLE_BITS + EXTRA_BITS) * n_samples_TAG_BIT;
             reader_state->gate_status = GATE_SEEK;
-            avg_iq = gr_complex(0.0,0.0);
+            avg_iq = gr_complex(0,0);
             iq_count = 0;
             n_samples = 0;
             amp_pos_threshold = 0;
@@ -140,7 +140,7 @@ namespace gr
             log << "│ Gate seek EPC.." << std::endl;
             reader_state->n_samples_to_ungate = (EPC_BITS + TAG_PREAMBLE_BITS + EXTRA_BITS) * n_samples_TAG_BIT;
             reader_state->gate_status = GATE_SEEK;
-            avg_iq = gr_complex(0.0,0.0);
+            avg_iq = gr_complex(0,0);
             iq_count = 0;
             n_samples = 0;
             amp_pos_threshold = 0;
@@ -165,20 +165,19 @@ namespace gr
               num_pulses = 0;
               max_count = MAX_SEARCH_TRACK;
 
-            }else if(n_samples < T1_LEN){
+            }else if(n_samples < T1_LEN/2){
+
               //add for average iq amplitude
               iq_count++;
               avg_iq += sample;
-            }else if(n_samples == T1_LEN){
+            }else if(n_samples == T1_LEN/2){
               //get average iq amplitude in here
               avg_iq /= iq_count;
               log << "| First AVG amp : " <<avg_iq<<std::endl;
-
               amp_pos_threshold = abs(avg_iq) * AMP_POS_THRESHOLD_RATE;
               amp_neg_threshold = abs(avg_iq) * AMP_NEG_THRESHOLD_RATE;
             }else{// == if(n_samples > T1_LEN)
               //get average iq amplitude in here
-              avg_iq = (avg_iq * (float)FILTER_RATIO) + (sample * (float)(1.0 - FILTER_RATIO));
               amp_pos_threshold = abs(avg_iq) * AMP_POS_THRESHOLD_RATE;
               amp_neg_threshold = abs(avg_iq) * AMP_NEG_THRESHOLD_RATE;
             }

@@ -31,9 +31,7 @@
 //#define DEBUG_TAG_DECODER_IMPL_INPUT
 //#define DEBUG_TAG_DECODER_IMPL_PREAMBLE
 //#define DEBUG_TAG_DECODER_IMPL_SAMPLE
-
-#define __DEBUG_LOG__
-
+//define __DEBUG_LOG__
 
 namespace gr
 {
@@ -51,8 +49,6 @@ namespace gr
           private:
             gr_complex* _in;
             int _total_size;
-            std::vector<float> _norm_in;
-
             float _corr;
             gr_complex _complex_corr;
 
@@ -82,7 +78,9 @@ namespace gr
         int tag_sync(sample_information*, int);
         std::vector<float> tag_detection(sample_information*, int, int);
         int determine_first_mask_level(sample_information*, int);
-        int decode_single_bit(sample_information* in, int, int, int);
+        std::complex<double> mask_correlation(sample_information *, const float[], const int, int index = 0,int mask_level = 1);
+        std::complex<double> mask_shift_one_sample(sample_information *, const float[], const int, std::complex<double>, int prev_index = 0, int mask_level = 1);
+
 
         // debug_message
         std::string current_round_slot;
