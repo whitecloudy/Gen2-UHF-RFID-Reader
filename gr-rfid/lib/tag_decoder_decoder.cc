@@ -4,6 +4,10 @@
 #endif
 
 #include "tag_decoder_impl.h"
+#include <cmath>
+
+//todo : we can't let this T1 length like this
+#define T1_LEN (400)
 
 #define SHIFT_SIZE 5  // used in tag_detection
 
@@ -43,10 +47,10 @@ namespace gr
       int max_index = 0;
       gr_complex max_stddev = 0.0;
 
-      // compare all samples with sliding
-      for(int i=0 ; i<ys->total_size()-(n_samples_TAG_BIT*(TAG_PREAMBLE_BITS+n_expected_bit)) ; i++)  // i: start point
+      // compare all samples with sliding except T1
+      for(int i=T1_LEN/2 ; i<ys->total_size()-(n_samples_TAG_BIT*(TAG_PREAMBLE_BITS+n_expected_bit)) ; i++)  // i: start point
       {
-        
+
         // calculate correlation value
         if(i==0){
           corr_temp = mask_correlation(ys, TAG_PREAMBLE_MASKS, TAG_PREAMBLE_MASKS_LENGTH, 0 , 1);
@@ -183,7 +187,7 @@ namespace gr
         }        //std::cout<<in[i];
       }
 
-     if(data == 0xAAAA)
+      if(data == 0xAAAA)
         correct_bit++;
       else{
         data = (data ^ 0xAAAA);

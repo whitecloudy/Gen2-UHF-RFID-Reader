@@ -24,6 +24,7 @@
 #include <rfid/gate.h>
 #include <vector>
 #include "rfid/global_vars.h"
+#include "IPC_controller_forRN16.h"
 #include <fstream>
 
 namespace gr {
@@ -33,9 +34,9 @@ namespace gr {
       private:
 
         enum SIGNAL_STATE {NEG_EDGE, POS_EDGE};
+        IPC_controller_forRN16 ipc;
 
         int n_samples, n_samples_T1, n_samples_TAG_BIT, n_samples_PW;
-
 
         gr_complex avg_iq;
         gr_complex avg_dc;
@@ -46,7 +47,6 @@ namespace gr {
 
         float amp_pos_threshold = 0;
         float amp_neg_threshold = 0;
-
 
         SIGNAL_STATE signal_state;
 
