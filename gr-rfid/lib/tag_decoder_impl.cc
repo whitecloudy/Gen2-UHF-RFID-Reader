@@ -157,7 +157,7 @@ namespace gr
     {
       std::vector<float> RN16_bits = tag_detection(ys, index, RN16_BITS-1);  // RN16_BITS includes one dummy bit
 
-      ipc.send_avg_corr(RN16_bits,(double)ys->corr(), ys->complex_corr());
+      ipc.send_avg_corr(RN16_bits,(double)ys->corr(), ys->complex_corr(), reader_state->reader_stats.cur_inventory_round);
 #ifdef __DEBUG_LOG__
       // write RN16_bits to the next block
       log << "│ RN16=";

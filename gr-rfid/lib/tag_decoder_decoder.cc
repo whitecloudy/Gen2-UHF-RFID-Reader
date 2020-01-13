@@ -48,7 +48,7 @@ namespace gr
       gr_complex max_stddev = 0.0;
 
       // compare all samples with sliding except T1
-      for(int i=T1_LEN/2 ; i<ys->total_size()-(n_samples_TAG_BIT*(TAG_PREAMBLE_BITS+n_expected_bit)) ; i++)  // i: start point
+      for(int i=0 ; i<ys->total_size()-(n_samples_TAG_BIT*(TAG_PREAMBLE_BITS+n_expected_bit)) ; i++)  // i: start point
       {
 
         // calculate correlation value
