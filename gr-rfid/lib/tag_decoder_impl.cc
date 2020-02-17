@@ -1,22 +1,22 @@
 /* -*- c++ -*- */
 /*
-* Copyright 2015 <Nikos Kargas (nkargas@isc.tuc.gr)>.
-*
-* This is free software; you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation; either version 3, or (at your option)
-* any later version.
-*
-* This software is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with this software; see the file COPYING.  If not, write to
-* the Free Software Foundation, Inc., 51 Franklin Street,
-* Boston, MA 02110-1301, USA.
-*/
+ * Copyright 2015 <Nikos Kargas (nkargas@isc.tuc.gr)>.
+ *
+ * This is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3, or (at your option)
+ * any later version.
+ *
+ * This software is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this software; see the file COPYING.  If not, write to
+ * the Free Software Foundation, Inc., 51 Franklin Street,
+ * Boston, MA 02110-1301, USA.
+ */
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -116,7 +116,7 @@ namespace gr
           debug_log << "Preamble detection fail" << std::endl << std::endl;
 #endif
           std::cout << "\t\t\t\t\tPreamble FAIL!!";
-          ipc.send_failed();
+          ipc.send_failed(_PREAMBLE_FAIL);
           goto_next_slot();
         }
         else
@@ -192,8 +192,8 @@ namespace gr
 
       std::cout << "RN16 decoded | ";
       //reader_state->gen2_logic_status = SEND_ACK;
-      goto_next_slot();
-   }
+      goto_next_slot();      
+    }
 
 
 
@@ -202,9 +202,9 @@ namespace gr
       std::vector<float> EPC_bits = tag_detection(ys, index, EPC_BITS-1);  // EPC_BITS includes one dummy bit
 
       // convert EPC_bits from float to char in order to use Buettner's function
-     
+
 #ifdef __DEBUG_LOG__
-     
+
       log << "│ EPC=";
       debug_log << "EPC=";
 
@@ -292,26 +292,26 @@ namespace gr
 
 #ifdef DEBUG_TAG_DECODER_
     IMPL_INPUT
-    void tag_decoder_impl::debug_input(sample_information* ys, int mode, std::string current_round_slot)
-    {
-      std::string path;
-      if(mode == 1) path = (debug_folder_path+"RN16_input/"+current_round_slot).c_str();
-      else if(mode == 2) path = (debug_folder_path+"EPC_input/"+current_round_slot).c_str();
-      else return;
-
-      std::ofstream debug_i((path+"_I").c_str(), std::ios::app);
-      std::ofstream debug_q((path+"_Q").c_str(), std::ios::app);
-      std::ofstream debug(path, std::ios::app);
-
-      for(int i=0 ; i<ys->total_size() ; i++)
+      void tag_decoder_impl::debug_input(sample_information* ys, int mode, std::string current_round_slot)
       {
-        debug << ys->in(i);
-      }
+        std::string path;
+        if(mode == 1) path = (debug_folder_path+"RN16_input/"+current_round_slot).c_str();
+        else if(mode == 2) path = (debug_folder_path+"EPC_input/"+current_round_slot).c_str();
+        else return;
 
-      debug_i.close();
-      debug_q.close();
-      debug.close();
-    }
+        std::ofstream debug_i((path+"_I").c_str(), std::ios::app);
+        std::ofstream debug_q((path+"_Q").c_str(), std::ios::app);
+        std::ofstream debug(path, std::ios::app);
+
+        for(int i=0 ; i<ys->total_size() ; i++)
+        {
+          debug << ys->in(i);
+        }
+
+        debug_i.close();
+        debug_q.close();
+        debug.close();
+      }
 #endif
 
 
@@ -341,26 +341,26 @@ namespace gr
 
 
 #ifdef DEBUG_TAG_DECODER_IMPL_SAMPLE
-      void tag_decoder_impl::debug_sample(sample_information* ys, int mode, std::string current_round_slot, int index)
+    void tag_decoder_impl::debug_sample(sample_information* ys, int mode, std::string current_round_slot, int index)
+    {
+      std::string path;
+      if(mode == 1) path = (debug_folder_path+"RN16_sample/"+current_round_slot).c_str();
+      else if(mode == 2) path = (debug_folder_path+"EPC_sample/"+current_round_slot).c_str();
+      else return;
+
+      std::ofstream debug_i((path+"_I").c_str(), std::ios::app);
+      std::ofstream debug_q((path+"_Q").c_str(), std::ios::app);
+      std::ofstream debug(path, std::ios::app);
+
+      for(int i=0 ; i<n_samples_TAG_BIT*(RN16_BITS-1) ; i++)
       {
-        std::string path;
-        if(mode == 1) path = (debug_folder_path+"RN16_sample/"+current_round_slot).c_str();
-        else if(mode == 2) path = (debug_folder_path+"EPC_sample/"+current_round_slot).c_str();
-        else return;
-
-        std::ofstream debug_i((path+"_I").c_str(), std::ios::app);
-        std::ofstream debug_q((path+"_Q").c_str(), std::ios::app);
-        std::ofstream debug(path, std::ios::app);
-
-        for(int i=0 ; i<n_samples_TAG_BIT*(RN16_BITS-1) ; i++)
-        {
-          debug << ys->in(i+index).real()<<","<<ys->in(i+index).imag()<<std::endl;
-        }
-
-        debug_i.close();
-        debug_q.close();
-        debug.close();
+        debug << ys->in(i+index).real()<<","<<ys->in(i+index).imag()<<std::endl;
       }
+
+      debug_i.close();
+      debug_q.close();
+      debug.close();
+    }
 #endif
 
     /* Function adapted from https://www.cgran.org/wiki/Gen2 */

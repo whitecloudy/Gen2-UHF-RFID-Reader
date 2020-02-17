@@ -6,9 +6,14 @@
 #include <complex>
 #include "IPC_controller.h"
 
+#define _GATE_SUCCESS 3
+#define _SUCCESS 1
+#define _GATE_FAIL 2
+#define _PREAMBLE_FAIL 0
+
 class IPC_controller_forRN16 : public IPC_controller{
 
-private:
+public:
   struct avg_corr_data{
     char successFlag;
     char RN16[16];
@@ -16,9 +21,10 @@ private:
     float avg_i;
     float avg_q;
     unsigned int round;
+    float cw_i;
+    float cw_q;
   } data;
 
-public:
   IPC_controller_forRN16();
   ~IPC_controller_forRN16();
 
@@ -27,8 +33,7 @@ public:
   int send_avg_corr(std::vector<float>, double, std::complex<float>);
   int send_avg_corr(std::vector<float>, double, std::complex<float>, unsigned int);
 
-
-  int send_failed(void);
+  int send_failed(int failNumber = _PREAMBLE_FAIL);
 
 };
 

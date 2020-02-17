@@ -1,22 +1,22 @@
 /* -*- c++ -*- */
 /*
-* Copyright 2015 <Nikos Kargas (nkargas@isc.tuc.gr)>.
-*
-* This is free software; you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation; either version 3, or (at your option)
-* any later version.
-*
-* This software is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-* GNU General Public License for more details.
-*
-* You should have received a copy of the GNU General Public License
-* along with this software; see the file COPYING.  If not, write to
-* the Free Software Foundation, Inc., 51 Franklin Street,
-* Boston, MA 02110-1301, USA.
-*/
+ * Copyright 2015 <Nikos Kargas (nkargas@isc.tuc.gr)>.
+ *
+ * This is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3, or (at your option)
+ * any later version.
+ *
+ * This software is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this software; see the file COPYING.  If not, write to
+ * the Free Software Foundation, Inc., 51 Franklin Street,
+ * Boston, MA 02110-1301, USA.
+ */
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -29,8 +29,6 @@
 
 #define AMP_LOWBOUND (0.01) //this will let us find the lowest bound
 #define MIN_PULSE (5)
-#define T1_LEN (400)
-#define FILTER_RATIO (0.9)
 
 #define AMP_POS_THRESHOLD_RATE (0.8)
 #define AMP_NEG_THRESHOLD_RATE (0.2)
@@ -97,7 +95,6 @@ namespace gr
 
 
         log.open(log_file_path, std::ios::app);
-
         if(reader_state->gate_status != GATE_CLOSED)
         {
           for(int i=0 ; i<ninput_items[0] ; i++)
@@ -176,19 +173,15 @@ namespace gr
                 num_pulses = 0;
                 max_count = MAX_SEARCH_TRACK;
 
-              }else if(n_samples < T1_LEN/2){
+              }else if(n_samples < (int)(n_samples_T1 * 0.4)){
 
                 //add for average iq amplitude
                 iq_count++;
                 avg_iq += sample;
-              }else if(n_samples == T1_LEN/2){
+              }else if(n_samples == (int)(n_samples_T1 * 0.4)){
                 //get average iq amplitude in here
                 avg_iq /= iq_count;
                 log << "| First AVG amp : " <<avg_iq<<std::endl;
-                amp_pos_threshold = abs(avg_iq) * AMP_POS_THRESHOLD_RATE;
-                amp_neg_threshold = abs(avg_iq) * AMP_NEG_THRESHOLD_RATE;
-              }else{// == if(n_samples > T1_LEN/2)
-                //get average iq amplitude in here
                 amp_pos_threshold = abs(avg_iq) * AMP_POS_THRESHOLD_RATE;
                 amp_neg_threshold = abs(avg_iq) * AMP_NEG_THRESHOLD_RATE;
               }
@@ -235,7 +228,7 @@ namespace gr
               }//log<<sample<<" ";
               if(abs(sample) < amp_neg_threshold){ 
                 n_samples = 0;
-              }else if(n_samples++ > T1_LEN)
+              }else if(n_samples++ > (int)n_samples_T1/2)
               {//log<<std::endl;
                 log << "│ Gate open!" << std::endl;
                 log << "├──────────────────────────────────────────────────" << std::endl;
@@ -249,12 +242,18 @@ namespace gr
             {
               if(++n_samples > reader_state->n_samples_to_ungate)
               {
+                std::ofstream iq_log;
+                iq_log.open("iq_log.csv", std::ios::app);
+                iq_log << reader_state->reader_stats.cur_slot_number <<", " << avg_iq.real()<<", "<<avg_iq.imag()<<std::endl;
+                iq_log.close();
+
                 reader_state->gate_status = GATE_CLOSED;
                 number_samples_consumed = i-1;
 
                 break;
               }
               out[written++] = sample - avg_iq;
+
             }
           }
         }
@@ -268,7 +267,7 @@ namespace gr
     void gate_impl::gate_fail(void)
     {
       log.open(log_file_path, std::ios::app);
-      ipc.send_failed();
+      ipc.send_failed(_GATE_FAIL);
 
       log << "│ Gate search FAIL!" << std::endl;
       std::cout << "Gate FAIL!!";

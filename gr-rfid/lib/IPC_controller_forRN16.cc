@@ -74,8 +74,8 @@ int IPC_controller_forRN16::send_avg_corr(std::vector<float> RN16,double avg_cor
 }
 
 
-int IPC_controller_forRN16::send_failed(void){
-  data.successFlag = 0;
+int IPC_controller_forRN16::send_failed(int failNumber){
+  data.successFlag = failNumber;
   data_send(&data, sizeof(struct avg_corr_data));
 
   wait_ack();
