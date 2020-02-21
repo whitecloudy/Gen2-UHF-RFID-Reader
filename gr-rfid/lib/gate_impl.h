@@ -37,6 +37,7 @@ namespace gr {
         IPC_controller_forRN16 ipc;
 
         int n_samples, n_samples_T1, n_samples_TAG_BIT, n_samples_PW;
+        std::vector<gr_complex> gate_log_samples;
 
         gr_complex avg_iq;
         gr_complex avg_dc;

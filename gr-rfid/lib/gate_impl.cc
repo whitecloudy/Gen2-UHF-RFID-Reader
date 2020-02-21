@@ -35,7 +35,7 @@
 
 #define MAX_SEARCH_TRACK (10000)
 #define MAX_SEARCH_READY (8000)
-#define MAX_SEARCH_SEEK  (4000)
+#define MAX_SEARCH_SEEK  (8000)
 
 namespace gr
 {
@@ -87,8 +87,6 @@ namespace gr
       {
         const gr_complex *in = (const gr_complex *) input_items[0];
         gr_complex *out = (gr_complex *) output_items[0];
-
-
 
         int number_samples_consumed = ninput_items[0];
         int written = 0;
@@ -142,6 +140,7 @@ namespace gr
               amp_pos_threshold = 0;
               amp_neg_threshold = 0;
               max_count = MAX_SEARCH_SEEK;
+              gate_log_samples.clear();
             }
             else if(reader_state->gate_status == GATE_SEEK_EPC)
             {
@@ -157,10 +156,12 @@ namespace gr
             }
 
             sample -= avg_dc;
+            gate_log_samples.push_back(sample);
 
             if(reader_state->gate_status == GATE_SEEK)
             {
               n_samples++;
+
               if(--max_count <= 0){
                 gate_fail();
                 number_samples_consumed = i-1;
@@ -184,6 +185,11 @@ namespace gr
                 log << "| First AVG amp : " <<avg_iq<<std::endl;
                 amp_pos_threshold = abs(avg_iq) * AMP_POS_THRESHOLD_RATE;
                 amp_neg_threshold = abs(avg_iq) * AMP_NEG_THRESHOLD_RATE;
+
+                std::ofstream iq_logger;
+                iq_logger.open("iq_log.csv", std::ios::app);
+                iq_logger<<reader_state->reader_stats.cur_inventory_round<<", "<<avg_iq.real()<<", "<<avg_iq.imag()<<std::endl;
+                iq_logger.close();
               }
             }
             else if(reader_state->gate_status == GATE_TRACK)
@@ -226,26 +232,38 @@ namespace gr
                 number_samples_consumed = i-1;
                 break;
               }//log<<sample<<" ";
-              if(abs(sample) < amp_neg_threshold){ 
+              if(signal_state == POS_EDGE){ 
+                if(abs(sample) < amp_neg_threshold){
+                  signal_state = NEG_EDGE;
+                }else if(n_samples++ > (int)n_samples_T1/2)
+                {//log<<std::endl;
+                  log << "│ Gate open! " << n_samples<<", "<<gate_log_samples.size() << std::endl;
+                  log << "├──────────────────────────────────────────────────" << std::endl;
+                  reader_state->gate_status = GATE_OPEN;
+                  written = 0;
+                  n_samples = 0;
+                  continue;
+                }
+              }else if((signal_state == NEG_EDGE) && (abs(sample) > amp_pos_threshold))
+              {
                 n_samples = 0;
-              }else if(n_samples++ > (int)n_samples_T1/2)
-              {//log<<std::endl;
-                log << "│ Gate open!" << std::endl;
-                log << "├──────────────────────────────────────────────────" << std::endl;
-                reader_state->gate_status = GATE_OPEN;
-                written = 0;
-                n_samples = 0;
-                continue;
+                signal_state = POS_EDGE;
               }
             }
             else if(reader_state->gate_status == GATE_OPEN)
             {
               if(++n_samples > reader_state->n_samples_to_ungate)
               {
-                std::ofstream iq_log;
-                iq_log.open("iq_log.csv", std::ios::app);
-                iq_log << reader_state->reader_stats.cur_slot_number <<", " << avg_iq.real()<<", "<<avg_iq.imag()<<std::endl;
-                iq_log.close();
+                
+                std::ofstream gate_logger;
+
+                gate_logger.open("gateOpenTracker/"+std::to_string(reader_state->reader_stats.cur_inventory_round), std::ios::out|std::ios::binary);
+                for(int i = 0; i<gate_log_samples.size();i++){
+                  gate_logger.write((char*)&gate_log_samples[i], sizeof(gr_complex));
+                }
+
+                gate_log_samples.clear();
+                gate_logger.close();
 
                 reader_state->gate_status = GATE_CLOSED;
                 number_samples_consumed = i-1;
@@ -256,7 +274,7 @@ namespace gr
 
             }
           }
-        }
+        } //end of "gate_status != GATE_CLOSE"
 
         log.close();
 
@@ -267,11 +285,23 @@ namespace gr
     void gate_impl::gate_fail(void)
     {
       log.open(log_file_path, std::ios::app);
-      ipc.send_failed(_GATE_FAIL);
 
       log << "│ Gate search FAIL!" << std::endl;
       std::cout << "Gate FAIL!!";
       reader_state->gate_status = GATE_CLOSED;
+
+      std::ofstream gate_logger;
+
+      gate_logger.open("gateOpenTracker/"+std::to_string(reader_state->reader_stats.cur_inventory_round), std::ios::out|std::ios::binary);
+      for(int i = 0; i<gate_log_samples.size();i++){
+        gate_logger.write((char*)&gate_log_samples[i], sizeof(gr_complex));
+      }
+
+      gate_log_samples.clear();
+      gate_logger.close();
+
+
+      ipc.send_failed(_GATE_FAIL);
 
       reader_state->reader_stats.cur_slot_number++;
       if(reader_state->reader_stats.cur_slot_number > reader_state->reader_stats.max_slot_number)
