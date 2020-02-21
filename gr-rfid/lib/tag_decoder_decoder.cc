@@ -4,6 +4,7 @@
 #endif
 
 #include "tag_decoder_impl.h"
+#include <cmath>
 
 #define SHIFT_SIZE 5  // used in tag_detection
 
@@ -43,10 +44,10 @@ namespace gr
       int max_index = 0;
       gr_complex max_stddev = 0.0;
 
-      // compare all samples with sliding
+      // compare all samples with sliding except T1
       for(int i=0 ; i<ys->total_size()-(n_samples_TAG_BIT*(TAG_PREAMBLE_BITS+n_expected_bit)) ; i++)  // i: start point
       {
-        
+
         // calculate correlation value
         if(i==0){
           corr_temp = mask_correlation(ys, TAG_PREAMBLE_MASKS, TAG_PREAMBLE_MASKS_LENGTH, 0 , 1);
@@ -172,33 +173,6 @@ namespace gr
 
       ys->set_corr(max_corr_sum/n_expected_bit);
       ys->set_complex_corr(max_complex_corr_sum/(float)n_expected_bit);
-
-
-      int data = 0;
-      for(int i = 0; i<16; i++){
-        data = data << 1;
-        data -= data & 1;
-        if(decoded_bits[i] > 0.5){
-          data += 1;
-        }        //std::cout<<in[i];
-      }
-
-     if(data == 0xAAAA)
-        correct_bit++;
-      else{
-        data = (data ^ 0xAAAA);
-        int b_c = 0;
-        int data1 = data;
-        for(int i = 0; i<16; i++){
-          if(data1 % 2 == 1)
-            b_c++;
-          data1 /= 2;
-        }
-        std::cout << std::hex<<data<<std::dec<<", "<<b_c<<" | ";
-
-      }
-
-      std::cout<<correct_bit<<" | ";
 
       return decoded_bits;
     }

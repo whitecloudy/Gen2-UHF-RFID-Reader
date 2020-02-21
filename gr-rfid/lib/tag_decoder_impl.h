@@ -41,8 +41,12 @@ namespace gr
     {
       private:
         float n_samples_TAG_BIT;
+        int n_samples_T1;
         int s_rate;
         char * char_bits;
+        int index;
+
+        bool flag_preamble = false;
 
         class sample_information
         {
