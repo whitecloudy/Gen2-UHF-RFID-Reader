@@ -6,9 +6,6 @@
 #include "tag_decoder_impl.h"
 #include <cmath>
 
-//todo : we can't let this T1 length like this
-#define T1_LEN (400)
-
 #define SHIFT_SIZE 5  // used in tag_detection
 
 #define FM0_MASKS_LENGTH  4

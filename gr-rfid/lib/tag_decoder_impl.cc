@@ -30,6 +30,8 @@
 #include <sys/time.h>
 #include "tag_decoder_impl.h"
 
+#define PREAMBLE_SEARCH_BIT_SIZE  (8)
+
 namespace gr
 {
   namespace rfid
@@ -52,6 +54,7 @@ namespace gr
     {
       char_bits = new char[128];
       n_samples_TAG_BIT = TPRI_D * s_rate / pow(10,6);
+      n_samples_T1  = T1_D * (sample_rate / pow(10,6));
       ipc.send_sync();
     }
 
@@ -77,8 +80,15 @@ namespace gr
       float* out = (float *)output_items[0];
       int consumed = 0;
 
+      if(!flag_preamble && (ninput_items[0] >= (n_samples_TAG_BIT * (TAG_PREAMBLE_BITS + PREAMBLE_SEARCH_BIT_SIZE))))
+      {
+        sample_information ys ((gr_complex*)input_items[0], ninput_items[0]);
+        index = tag_sync(&ys, PREAMBLE_SEARCH_BIT_SIZE);
+        flag_preamble = true;
+      }
+
       // Processing only after n_samples_to_ungate are available and we need to decode
-      if(ninput_items[0] >= reader_state->n_samples_to_ungate)
+      if(flag_preamble && (ninput_items[0] >= reader_state->n_samples_to_ungate))
       {
         int mode = -1;
         if(reader_state->decoder_status == DECODER_DECODE_RN16) mode = 1;
@@ -105,7 +115,6 @@ namespace gr
 #endif
 
         // detect preamble
-        int index;
         if(mode == 1) index = tag_sync(&ys, RN16_BITS-1);
         else if(mode == 2) index = tag_sync(&ys, EPC_BITS-1);
 
@@ -145,6 +154,7 @@ namespace gr
         // process for GNU RADIO
         produce(1, ninput_items[0]);
         consumed = reader_state->n_samples_to_ungate;
+        flag_preamble = false;
       }
 
       consume_each(consumed);

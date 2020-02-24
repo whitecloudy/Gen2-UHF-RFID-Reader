@@ -254,17 +254,8 @@ namespace gr
             {
               if(++n_samples > reader_state->n_samples_to_ungate)
               {
-                
-                std::ofstream gate_logger;
-
-                gate_logger.open("gateOpenTracker/"+std::to_string(reader_state->reader_stats.cur_inventory_round), std::ios::out|std::ios::binary);
-                for(int i = 0; i<gate_log_samples.size();i++){
-                  gate_logger.write((char*)&gate_log_samples[i], sizeof(gr_complex));
-                }
-
-                gate_log_samples.clear();
-                gate_logger.close();
-
+                gateLogSave();          
+      
                 reader_state->gate_status = GATE_CLOSED;
                 number_samples_consumed = i-1;
 
@@ -290,17 +281,7 @@ namespace gr
       std::cout << "Gate FAIL!!";
       reader_state->gate_status = GATE_CLOSED;
 
-      std::ofstream gate_logger;
-
-      gate_logger.open("gateOpenTracker/"+std::to_string(reader_state->reader_stats.cur_inventory_round), std::ios::out|std::ios::binary);
-      for(int i = 0; i<gate_log_samples.size();i++){
-        gate_logger.write((char*)&gate_log_samples[i], sizeof(gr_complex));
-      }
-
-      gate_log_samples.clear();
-      gate_logger.close();
-
-
+      gateLogSave();
       ipc.send_failed(_GATE_FAIL);
 
       reader_state->reader_stats.cur_slot_number++;
@@ -325,5 +306,17 @@ namespace gr
 
       log.close();
     }
-  }
-}
+
+    void gate_impl::gateLogSave(void){
+      std::ofstream gate_logger;
+
+      gate_logger.open("gateOpenTracker/"+std::to_string(reader_state->reader_stats.cur_inventory_round), std::ios::out|std::ios::binary);
+      for(int i = 0; i<gate_log_samples.size();i++){
+        gate_logger.write((char*)&gate_log_samples[i], sizeof(gr_complex));
+      }
+
+      gate_log_samples.clear();
+      gate_logger.close();
+    }
+  } // namespace rfid
+} // namespace gr
