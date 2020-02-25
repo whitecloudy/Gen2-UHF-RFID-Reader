@@ -80,6 +80,7 @@ namespace gr
       float* out = (float *)output_items[0];
       int consumed = 0;
 
+      //find preamble at here
       if(!flag_preamble && (ninput_items[0] >= (n_samples_TAG_BIT * (TAG_PREAMBLE_BITS + PREAMBLE_SEARCH_BIT_SIZE))))
       {
         sample_information ys ((gr_complex*)input_items[0], ninput_items[0]);
@@ -125,7 +126,7 @@ namespace gr
           debug_log << "Preamble detection fail" << std::endl << std::endl;
 #endif
           std::cout << "\t\t\t\t\tPreamble FAIL!!";
-          ipc.send_failed(_PREAMBLE_FAIL);
+          ipc.send_failed(_PREAMBLE_FAIL, ys.avg_ampl());
           goto_next_slot();
         }
         else
@@ -167,7 +168,7 @@ namespace gr
     {
       std::vector<float> RN16_bits = tag_detection(ys, index, RN16_BITS-1);  // RN16_BITS includes one dummy bit
 
-      ipc.send_avg_corr(RN16_bits,(double)ys->corr(), ys->complex_corr(), reader_state->reader_stats.cur_inventory_round);
+      ipc.send_avg_corr(RN16_bits,(double)ys->corr(), ys->complex_corr(), ys->avg_ampl(), reader_state->reader_stats.cur_inventory_round);
 #ifdef __DEBUG_LOG__
       // write RN16_bits to the next block
       log << "│ RN16=";

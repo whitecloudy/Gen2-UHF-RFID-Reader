@@ -32,8 +32,12 @@ public:
   int send_avg_corr(std::vector<float>, std::complex<float>);
   int send_avg_corr(std::vector<float>, double, std::complex<float>);
   int send_avg_corr(std::vector<float>, double, std::complex<float>, unsigned int);
+  int send_avg_corr(std::vector<float>, double, std::complex<float>, std::complex<float>, unsigned int);
 
-  int send_failed(int failNumber = _PREAMBLE_FAIL);
+
+  int send_failed(int failNumber = _GATE_FAIL);
+  int send_failed(int failNumber, std::complex<float>avg_ampl);
+
 
 };
 

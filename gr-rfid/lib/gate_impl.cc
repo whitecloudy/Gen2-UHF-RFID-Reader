@@ -261,7 +261,7 @@ namespace gr
 
                 break;
               }
-              out[written++] = sample - avg_iq;
+              out[written++] = sample;
 
             }
           }

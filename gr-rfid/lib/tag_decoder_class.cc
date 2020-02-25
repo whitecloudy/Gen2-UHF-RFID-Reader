@@ -15,7 +15,7 @@ namespace gr
       _total_size = 0;
       _corr = 0;
       _complex_corr = std::complex<float>(0.0,0.0);
-
+      _avg_ampl = std::complex<float>(0.0,0.0);
     }
 
     tag_decoder_impl::sample_information::sample_information(gr_complex* __in, int __total_size)
@@ -25,6 +25,13 @@ namespace gr
       this->_total_size = __total_size;
       _corr = 0;
       _complex_corr = std::complex<float>(0.0,0.0);
+      _avg_ampl = std::complex<float>(0.0,0.0);
+      if(_total_size > 200){
+        for(int i = 0; i < 200; i++){
+          _avg_ampl += _in[i];
+        }
+        _avg_ampl /= 200;
+      }
     }
 
     tag_decoder_impl::sample_information::~sample_information(){}
@@ -41,7 +48,7 @@ namespace gr
 
     gr_complex tag_decoder_impl::sample_information::in(int index)
     {
-      return _in[index];
+      return _in[index]-_avg_ampl;
     }
 
     int tag_decoder_impl::sample_information::total_size(void)
@@ -62,6 +69,10 @@ namespace gr
     gr_complex tag_decoder_impl::sample_information::complex_corr(void)
     {
       return _complex_corr;
+    }
+
+    gr_complex tag_decoder_impl::sample_information::avg_ampl(void){
+      return _avg_ampl;
     }
   }
 }
