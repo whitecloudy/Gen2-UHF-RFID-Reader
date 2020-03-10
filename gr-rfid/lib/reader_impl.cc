@@ -122,7 +122,7 @@ namespace gr
 
       query_bits.resize(0);
       query_bits.insert(query_bits.end(), &QUERY_CODE[0], &QUERY_CODE[4]);
-
+/*
       query_bits.push_back(DR);
       query_bits.insert(query_bits.end(), &M[0], &M[2]);
       query_bits.push_back(TREXT);
@@ -131,6 +131,29 @@ namespace gr
       query_bits.push_back(TARGET);
 
       query_bits.insert(query_bits.end(), &Q_VALUE[FIXED_Q][0], &Q_VALUE[FIXED_Q][4]);
+      */
+
+      //insert round number instead of normal query bits
+      std::vector<float> tmp_round;
+      tmp_round.resize(0);
+
+      int round = reader_state->reader_stats.cur_inventory_round;
+      for(int i = 0; i< 12; i++){
+        if((round & 0x1) == 1){
+          tmp_round.push_back(1);
+        }else{
+          tmp_round.push_back(0);
+        }
+        round = round >> 1;
+      }
+
+      for(int i = 0; i< 12; i++){
+        query_bits.push_back(tmp_round.back());
+        tmp_round.pop_back();
+      }
+      query_bits.push_back(0);
+
+
       crc_append(query_bits);
     }
 

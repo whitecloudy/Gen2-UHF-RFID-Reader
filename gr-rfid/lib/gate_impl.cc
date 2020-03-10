@@ -30,8 +30,8 @@
 #define AMP_LOWBOUND (0.01) //this will let us find the lowest bound
 #define MIN_PULSE (5)
 
-#define AMP_POS_THRESHOLD_RATE (0.8)
-#define AMP_NEG_THRESHOLD_RATE (0.2)
+#define AMP_POS_THRESHOLD_RATE (0.7)
+#define AMP_NEG_THRESHOLD_RATE (0.3)
 
 #define MAX_SEARCH_TRACK (10000)
 #define MAX_SEARCH_READY (8000)
@@ -282,7 +282,7 @@ namespace gr
       reader_state->gate_status = GATE_CLOSED;
 
       gateLogSave();
-      ipc.send_failed(_GATE_FAIL);
+      ipc.send_failed(_GATE_FAIL, reader_state->reader_stats.cur_inventory_round);
 
       reader_state->reader_stats.cur_slot_number++;
       if(reader_state->reader_stats.cur_slot_number > reader_state->reader_stats.max_slot_number)

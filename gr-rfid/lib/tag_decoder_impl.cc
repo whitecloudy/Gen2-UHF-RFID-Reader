@@ -126,7 +126,7 @@ namespace gr
           debug_log << "Preamble detection fail" << std::endl << std::endl;
 #endif
           std::cout << "\t\t\t\t\tPreamble FAIL!!";
-          ipc.send_failed(_PREAMBLE_FAIL, ys.avg_ampl());
+          ipc.send_failed(_PREAMBLE_FAIL, ys.avg_ampl(), reader_state->reader_stats.cur_inventory_round);
           goto_next_slot();
         }
         else
