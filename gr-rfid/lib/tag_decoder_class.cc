@@ -4,6 +4,7 @@
 #endif
 
 #include "tag_decoder_impl.h"
+#include <cmath>
 
 namespace gr
 {
@@ -27,11 +28,21 @@ namespace gr
       _complex_corr = std::complex<float>(0.0,0.0);
       _avg_ampl = std::complex<float>(0.0,0.0);
       if(_total_size > 200){
+        //calculate ampl average
         for(int i = 0; i < 200; i++){
           _avg_ampl += _in[i];
         }
         _avg_ampl /= 200;
+
+        //calculate ampl stddev
+        for(int i = 0; i < 200; i++){
+          gr_complex tmp_complex = _in[i] - _avg_ampl;
+          _stddev_ampl += std::complex<float>(std::pow(tmp_complex.real(),2), std::pow(tmp_complex.imag(),2));
+        }
+        _stddev_ampl /= 200;
+        _stddev_ampl = std::complex<float>(std::pow(_stddev_ampl.real(),0.5), std::pow(_stddev_ampl.imag(),0.5));
       }
+      
     }
 
     tag_decoder_impl::sample_information::~sample_information(){}
@@ -73,6 +84,10 @@ namespace gr
 
     gr_complex tag_decoder_impl::sample_information::avg_ampl(void){
       return _avg_ampl;
+    }
+
+    gr_complex tag_decoder_impl::sample_information::stddev_ampl(void){
+      return _stddev_ampl;
     }
   }
 }

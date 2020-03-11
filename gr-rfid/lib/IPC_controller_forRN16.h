@@ -23,15 +23,17 @@ public:
     unsigned int round;
     float cw_i;
     float cw_q;
+    float stddev_i;
+    float stddev_q;
   } data;
 
   IPC_controller_forRN16();
   ~IPC_controller_forRN16();
 
-  int send_avg_corr(std::vector<float>, double, std::complex<float>, std::complex<float>, unsigned int);
+  int send_avg_corr(std::vector<float>, double, std::complex<float>, std::complex<float>, std::complex<float>, unsigned int);
 
   int send_failed(int failNumber, unsigned int);
-  int send_failed(int failNumber, std::complex<float>avg_ampl, unsigned int);
+  int send_failed(int failNumber, std::complex<float> avg_ampl, std::complex<float> stddev_ampl, unsigned int);
 
 
 };

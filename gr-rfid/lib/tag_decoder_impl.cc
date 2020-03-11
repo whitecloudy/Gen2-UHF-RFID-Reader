@@ -126,7 +126,7 @@ namespace gr
           debug_log << "Preamble detection fail" << std::endl << std::endl;
 #endif
           std::cout << "\t\t\t\t\tPreamble FAIL!!";
-          ipc.send_failed(_PREAMBLE_FAIL, ys.avg_ampl(), reader_state->reader_stats.cur_inventory_round);
+          ipc.send_failed(_PREAMBLE_FAIL, ys.avg_ampl(), ys.stddev_ampl(), reader_state->reader_stats.cur_inventory_round);
           goto_next_slot();
         }
         else
@@ -168,7 +168,7 @@ namespace gr
     {
       std::vector<float> RN16_bits = tag_detection(ys, index, RN16_BITS-1);  // RN16_BITS includes one dummy bit
 
-      ipc.send_avg_corr(RN16_bits,(double)ys->corr(), ys->complex_corr(), ys->avg_ampl(), reader_state->reader_stats.cur_inventory_round);
+      ipc.send_avg_corr(RN16_bits,(double)ys->corr(), ys->complex_corr(), ys->avg_ampl(), ys->stddev_ampl(), reader_state->reader_stats.cur_inventory_round);
 #ifdef __DEBUG_LOG__
       // write RN16_bits to the next block
       log << "│ RN16=";
