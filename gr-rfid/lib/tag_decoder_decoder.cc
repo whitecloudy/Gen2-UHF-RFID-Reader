@@ -30,7 +30,7 @@ namespace gr
     {1, 1, -1, 1, -1, -1, 1, -1, -1, -1, 1, 1};
 
 
-    int tag_decoder_impl::tag_sync(sample_information* ys, int n_expected_bit)
+    int tag_decoder_impl::tag_sync(sample_information* ys)
       // This method searches the preamble and returns the start index of the tag data.
       // If the correlation value exceeds the threshold, it returns the start index of the tag data.
       // Else, it returns -1.
@@ -45,14 +45,14 @@ namespace gr
       gr_complex max_stddev = 0.0;
 
       // compare all samples with sliding except T1
-      for(int i=0 ; i<ys->total_size()-(n_samples_TAG_BIT*(TAG_PREAMBLE_BITS+n_expected_bit)) ; i++)  // i: start point
+      for(int i=0 ; i<ys->total_size()-win_size ; i++)  // i: start point
       {
 
         // calculate correlation value
         if(i==0){
-          corr_temp = mask_correlation(ys, TAG_PREAMBLE_MASKS, TAG_PREAMBLE_MASKS_LENGTH, 0 , 1);
+          corr_temp = mask_correlation(ys, TAG_PREAMBLE_MASKS, TAG_PREAMBLE_MASKS_LENGTH, i , 1);
         }else{
-          corr_temp = mask_shift_one_sample(ys,TAG_PREAMBLE_MASKS, TAG_PREAMBLE_MASKS_LENGTH, corr_temp, i-1, 1);
+          corr_temp = mask_shift_one_sample(ys,TAG_PREAMBLE_MASKS, TAG_PREAMBLE_MASKS_LENGTH, corr_temp, i, 1);
         }
 
         // get max correlation value for ith start point
