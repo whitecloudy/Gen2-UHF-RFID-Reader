@@ -82,7 +82,7 @@ namespace gr
       if(!flag_preamble && (ninput_items[0] >= (n_samples_TAG_BIT * (TAG_PREAMBLE_BITS + PREAMBLE_SEARCH_BIT_SIZE))))
       {
         sample_information ys ((gr_complex*)input_items[0], ninput_items[0]);
-        index = tag_sync(&ys, PREAMBLE_SEARCH_BIT_SIZE);
+        index = tag_sync(&ys);
         flag_preamble = true;
       }
 
@@ -112,10 +112,6 @@ namespace gr
 #ifdef DEBUG_TAG_DECODER_IMPL_INPUT
         debug_input(&ys, mode, current_round_slot);
 #endif
-
-        // detect preamble
-        if(mode == 1) index = tag_sync(&ys, RN16_BITS-1);
-        else if(mode == 2) index = tag_sync(&ys, EPC_BITS-1);
 
         if(index == -1)
         {

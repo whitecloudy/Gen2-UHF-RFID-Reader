@@ -79,7 +79,7 @@ namespace gr
         int check_crc(char*, int);
 
         // tag_decoder_decoder.cc
-        int tag_sync(sample_information*, int);
+        int tag_sync(sample_information*);
         std::vector<float> tag_detection(sample_information*, int, int);
         int determine_first_mask_level(sample_information*, int);
         std::complex<double> mask_correlation(sample_information *, const float[], const int, int index = 0,int mask_level = 1);
