@@ -101,6 +101,37 @@ namespace gr
           char data[8];
           memcpy(data, &sample, 8);
 
+#ifdef __GATE_DEBUG__
+          if(prev_gate_status != reader_state->gate_status){
+            prev_gate_status = reader_state->gate_status;
+            switch(reader_state->gate_status){
+              case GATE_START:
+                log<<"gate start"<<std::endl;
+                break;
+              case GATE_SEEK_RN16:
+                log<<"gate seek RN16"<<std::endl;
+                break;
+              case GATE_TRACK:
+                log<<"gate track"<<std::endl;
+                break;
+              case GATE_READY:
+                log<<"gate ready"<<std::endl;
+                break;  
+              case GATE_SEEK:
+                log<<"gate seek"<<std::endl;
+                break;  
+              case GATE_OPEN:
+                log<<"gate open"<<std::endl;
+                break;  
+              case GATE_CLOSED:
+                log<<"gate closed"<<std::endl;
+                break;  
+              default:
+                log<<"WHAT THE HELL???"<<std::endl;
+            }
+          }
+#endif
+
 
           if(reader_state->gate_status == GATE_START)
           {
@@ -255,14 +286,12 @@ namespace gr
             if(++n_samples > reader_state->n_samples_to_ungate)
             {
               gateLogSave();          
-
-              reader_state->gate_status = GATE_CLOSED;
               number_samples_consumed = i-1;
-
+              n_samples = 0;
+              reader_state->gate_status = GATE_CLOSED;
               break;
             }
             out[written++] = sample;
-
           }
         }
       } //end of "gate_status != GATE_CLOSE"

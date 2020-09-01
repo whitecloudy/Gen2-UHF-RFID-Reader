@@ -89,7 +89,7 @@ namespace gr
       }
 
       // Processing only after n_samples_to_ungate are available and we need to decode
-      if(flag_preamble && (ninput_items[0] >= reader_state->n_samples_to_ungate))
+      if(flag_preamble && reader_state->gate_status == GATE_CLOSED)
       {
         int mode = -1;
         if(reader_state->decoder_status == DECODER_DECODE_RN16) mode = 1;

@@ -33,6 +33,7 @@ namespace gr {
     class gate_impl : public gate
     {
       private:
+        GATE_STATUS     prev_gate_status = GATE_CLOSED;
 
         enum SIGNAL_STATE {NEG_EDGE, POS_EDGE};
         IPC_controller_forRN16 ipc;
@@ -43,7 +44,7 @@ namespace gr {
         gr_complex avg_dc;
 
         int iq_count = 0;
-        int max_count;
+        int max_count = 0;
         int num_pulses;
 
         float amp_pos_threshold = 0;
