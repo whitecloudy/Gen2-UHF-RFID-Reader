@@ -228,6 +228,8 @@ namespace gr
         }
         else if(reader_state->gen2_logic_status == SEND_QUERY)
         {
+          reader_state->gen2_logic_status = IDLE;
+
           log << std::endl << "┌──────────────────────────────────────────────────" << std::endl;
           log << "│ Inventory Round: " << reader_state->reader_stats.cur_inventory_round << " | Slot Number: " << reader_state->reader_stats.cur_slot_number << std::endl;
           std::cout << std::endl << "[" << reader_state->reader_stats.cur_inventory_round << "_" << reader_state->reader_stats.cur_slot_number << "] ";
@@ -248,8 +250,6 @@ namespace gr
           log << "│ Send Query | Q= " << FIXED_Q << std::endl;
           log << "├──────────────────────────────────────────────────" << std::endl;
           std::cout << "Query(Q=" << FIXED_Q << ") | ";
-
-          reader_state->gen2_logic_status = IDLE;
         }
         else if(reader_state->gen2_logic_status == SEND_QUERY_REP)
         {

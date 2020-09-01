@@ -22,7 +22,6 @@
 #include "config.h"
 #endif
 
-
 #include <gnuradio/io_signature.h>
 #include <gnuradio/prefs.h>
 #include <gnuradio/math.h>
@@ -89,8 +88,10 @@ namespace gr
       }
 
       // Processing only after n_samples_to_ungate are available and we need to decode
-      if(flag_preamble && reader_state->gate_status == GATE_CLOSED)
+      if(flag_preamble && (ninput_items[0] >= reader_state->n_samples_to_ungate) && (reader_state->gate_status == GATE_CLOSED))
       {
+        flag_preamble = false;
+
         int mode = -1;
         if(reader_state->decoder_status == DECODER_DECODE_RN16) mode = 1;
         else if(reader_state->decoder_status == DECODER_DECODE_EPC) mode = 2;
@@ -151,7 +152,6 @@ namespace gr
         // process for GNU RADIO
         produce(1, ninput_items[0]);
         consumed = reader_state->n_samples_to_ungate;
-        flag_preamble = false;
       }
 
       consume_each(consumed);

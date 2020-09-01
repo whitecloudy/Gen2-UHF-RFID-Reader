@@ -144,10 +144,7 @@ namespace gr
               avg_dc /= 20000;
               log << "n_samples_TAG_BIT= " << n_samples_TAG_BIT << std::endl;
               log << "Average of first 20000 amplitudes= " << avg_dc << std::endl;
-
-              reader_state->gen2_logic_status = SEND_QUERY;
-              reader_state->gate_status = GATE_CLOSED;
-
+              
               number_samples_consumed = i-1;
 
               avg_iq = gr_complex(0,0);
@@ -156,6 +153,9 @@ namespace gr
               amp_pos_threshold = 0;
               amp_neg_threshold = 0;
               max_count = MAX_SEARCH_SEEK;
+
+              reader_state->gate_status = GATE_CLOSED;
+              reader_state->gen2_logic_status = SEND_QUERY;
 
               break;
             }
