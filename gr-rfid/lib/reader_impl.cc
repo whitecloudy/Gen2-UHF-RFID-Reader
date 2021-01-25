@@ -187,8 +187,10 @@ namespace gr
 
     void reader_impl::transmit_bits(float* out, int* written, std::vector<float> bits)
     {
+      reader_state-> sent_bit.resize(bits.size());
       for(int i=0 ; i<bits.size() ; i++)
       {
+        reader_state-> sent_bit[i] = bits[i];
         if(bits[i] == 1) transmit(out, written, data_1);
         else transmit(out, written, data_0);
       }
@@ -238,6 +240,7 @@ namespace gr
           // Controls the other two blocks
           reader_state->decoder_status = DECODER_DECODE_RN16;
           reader_state->gate_status    = GATE_SEEK_RN16;
+          reader_state->reader_sent_status = PREAMBLE;
 
           transmit(out, &written, cw);
           transmit(out, &written, preamble);
@@ -260,6 +263,7 @@ namespace gr
           // Controls the other two blocks
           reader_state->decoder_status = DECODER_DECODE_RN16;
           reader_state->gate_status    = GATE_SEEK_RN16;
+          reader_state->reader_sent_status = FRAME_SYNC;
 
           transmit(out, &written, cw);
           transmit(out, &written, query_rep);
@@ -278,6 +282,7 @@ namespace gr
           // Controls the other two blocks
           reader_state->decoder_status = DECODER_DECODE_EPC;
           reader_state->gate_status    = GATE_SEEK_EPC;
+          reader_state->reader_sent_status = FRAME_SYNC;
 
           transmit(out, &written, cw);
           transmit(out, &written, frame_sync);

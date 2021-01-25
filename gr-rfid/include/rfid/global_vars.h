@@ -23,6 +23,7 @@
 
 #include <rfid/api.h>
 #include <map>
+#include <vector>
 #include <sys/time.h>
 #include <fstream>
 
@@ -33,6 +34,8 @@ namespace gr {
     enum GEN2_LOGIC_STATUS  {SEND_QUERY, SEND_ACK, SEND_QUERY_REP, IDLE, SEND_CW, START, SEND_QUERY_ADJUST, SEND_NAK_QR, SEND_NAK_Q, POWER_DOWN};
     enum GATE_STATUS        {GATE_START, GATE_TRACK, GATE_READY, GATE_OPEN, GATE_CLOSED, GATE_SEEK, GATE_SEEK_RN16, GATE_SEEK_EPC};
     enum DECODER_STATUS     {DECODER_DECODE_RN16, DECODER_DECODE_EPC, DECODER_TERMINATED};
+    enum READER_SENT_STATUS {PREAMBLE, FRAME_SYNC};
+
 
     struct READER_STATS
     {
@@ -60,9 +63,9 @@ namespace gr {
       GATE_STATUS         gate_status;
       DECODER_STATUS       decoder_status;
       READER_STATS         reader_stats;
+      READER_SENT_STATUS   reader_sent_status;
 
-
-
+      std::vector<uint8_t> sent_bit;
       std::vector<float> magn_squared_samples; // used for sync
       int n_samples_to_ungate; // used by the GATE and DECODER block
     };
