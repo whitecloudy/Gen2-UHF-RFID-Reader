@@ -22,7 +22,6 @@
 #include "config.h"
 #endif
 
-
 #include <gnuradio/io_signature.h>
 #include <gnuradio/prefs.h>
 #include <gnuradio/math.h>
@@ -70,7 +69,7 @@ namespace gr
       ninput_items_required[0] = noutput_items;
     }
 
-    
+
 
 
 
@@ -79,6 +78,7 @@ namespace gr
       float* out = (float *)output_items[0];
       int consumed = 0;
 
+      //find preamble at here
       if(!flag_preamble && (ninput_items[0] >= (n_samples_TAG_BIT * (TAG_PREAMBLE_BITS + PREAMBLE_SEARCH_BIT_SIZE))))
       {
         sample_information ys ((gr_complex*)input_items[0], ninput_items[0]);
@@ -87,8 +87,10 @@ namespace gr
       }
 
       // Processing only after n_samples_to_ungate are available and we need to decode
-      if(flag_preamble && (ninput_items[0] >= reader_state->n_samples_to_ungate))
+      if(flag_preamble && (ninput_items[0] >= reader_state->n_samples_to_ungate) && (reader_state->gate_status == GATE_CLOSED))
       {
+        flag_preamble = false;
+
         int mode = -1;
         if(reader_state->decoder_status == DECODER_DECODE_RN16) mode = 1;
         else if(reader_state->decoder_status == DECODER_DECODE_EPC) mode = 2;
@@ -148,7 +150,6 @@ namespace gr
         // process for GNU RADIO
         produce(1, ninput_items[0]);
         consumed = reader_state->n_samples_to_ungate;
-        flag_preamble = false;
       }
 
       consume_each(consumed);

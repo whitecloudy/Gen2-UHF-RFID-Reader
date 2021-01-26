@@ -55,6 +55,8 @@ namespace gr
             int _total_size;
             float _corr;
             gr_complex _complex_corr;
+            gr_complex _avg_ampl;
+            gr_complex _stddev_ampl;
 
           public:
             sample_information();
@@ -70,6 +72,8 @@ namespace gr
 
             float corr(void);
             gr_complex complex_corr(void);
+            gr_complex avg_ampl(void);
+            gr_complex stddev_ampl(void);
         };
 
         // tag_decoder_impl.cc

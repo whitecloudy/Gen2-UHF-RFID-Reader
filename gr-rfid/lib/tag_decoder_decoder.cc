@@ -174,6 +174,33 @@ namespace gr
       ys->set_corr(max_corr_sum/n_expected_bit);
       ys->set_complex_corr(max_complex_corr_sum/(float)n_expected_bit);
 
+
+      int data = 0;
+      for(int i = 0; i<16; i++){
+        data = data << 1;
+        data -= data & 1;
+        if(decoded_bits[i] > 0.5){
+          data += 1;
+        }        //std::cout<<in[i];
+      }
+
+      if(data == 0xAAAA)
+        correct_bit++;
+      else{
+        data = (data ^ 0xAAAA);
+        int b_c = 0;
+        int data1 = data;
+        for(int i = 0; i<16; i++){
+          if(data1 % 2 == 1)
+            b_c++;
+          data1 /= 2;
+        }
+        std::cout << std::hex<<data<<std::dec<<", "<<b_c<<" | ";
+
+      }
+
+      std::cout<<correct_bit<<" | ";
+
       return decoded_bits;
     }
 
