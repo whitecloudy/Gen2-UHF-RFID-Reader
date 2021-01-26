@@ -202,6 +202,12 @@ namespace gr
               max_count = MAX_SEARCH_TRACK;
             }
 
+            //set reader decoder to decoder preambled version or framsync version
+            if(reader_state->reader_sent_status == PREAMBLE)
+              decoder->set_preamble();
+            else if(reader_state->reader_sent_status == FRAME_SYNC)
+              decoder->set_framesync();
+
             sample -= avg_dc;
             gate_log_samples.push_back(sample);
 
